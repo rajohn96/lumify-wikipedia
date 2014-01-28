@@ -1,0 +1,23 @@
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:atc="http://altamiracorp.com/ontology#">
+    <owl:Ontology rdf:about="">
+        <owl:versionInfo xml:lang="en">Version 3.8</owl:versionInfo>
+    </owl:Ontology>
+
+    <!-- Concept: wikipediaPage -->
+    <owl:Class rdf:about="wikipediaPage">                
+        <rdfs:label xml:lang="en">Wikipedia Page</rdfs:label>                
+        <atc:property atc:name="glyphIconFileName">wikipediaPage.png</atc:property>
+        <atc:property atc:name="displayType">document</atc:property>
+        <rdfs:subClassOf rdf:resource="http://altamiracorp.com/ontology/document"/>            
+    </owl:Class>
+        
+    <!-- relationships -->
+    <owl:ObjectProperty rdf:about="wikipediaPageInternalLinkWikipediaPage">
+        <rdfs:label xml:lang="en">Internal Link</rdfs:label>
+        <rdfs:domain rdf:resource="#wikipediaPage"/>
+        <rdfs:range rdf:resource="#wikipediaPage"/>
+    </owl:ObjectProperty>
+</rdf:RDF>

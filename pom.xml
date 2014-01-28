@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.altamiracorp.lumify</groupId>
+        <artifactId>lumify-root</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>lumify-wikipedia</artifactId>
+    <name>Lumify Wikipedia</name>
+
+    <properties>
+        <!-- Dependency Versions -->
+        <lumify.version>1.0-SNAPSHOT</lumify.version>
+        <sweble.version>1.1.0</sweble.version>
+        <jdom.version>2.0.2</jdom.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.altamiracorp.lumify</groupId>
+            <artifactId>lumify-storm</artifactId>
+            <version>${lumify.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${storm.guava.version}</version>
+            <scope>${cluster.dependency.scope}</scope>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>${storm.log4j.version}</version>
+            <scope>${cluster.dependency.scope}</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${storm.slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${storm.slf4j.version}</version>
+            <scope>${cluster.dependency.scope}</scope>
+        </dependency>
+        <dependency>
+            <groupId>storm</groupId>
+            <artifactId>storm</artifactId>
+            <version>${storm.version}</version>
+            <scope>${cluster.dependency.scope}</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.sweble.wikitext</groupId>
+            <artifactId>swc-engine</artifactId>
+            <version>${sweble.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jdom</groupId>
+            <artifactId>jdom</artifactId>
+            <version>${jdom.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jaxen</groupId>
+            <artifactId>jaxen</artifactId>
+            <version>1.1.6</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/lumify-build.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/lumify-build.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Use this profile to build when deploying to a clustered environment. -->
+        <profile>
+            <id>cluster</id>
+            <properties>
+                <cluster.dependency.scope>provided</cluster.dependency.scope>
+            </properties>
+        </profile>
+
+        <!-- Builds the Storm Uber-JAR -->
+        <profile>
+            <id>storm-jar</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <configuration>
+                            <descriptor>src/main/assembly/descriptor.xml</descriptor>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.altamiracorp.lumify.wikipedia.StormRunner</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>make-assembly</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <repositories>
+        <repository>
+            <id>lumify-releases</id>
+            <!-- The url needs to be hardcoded here because maven processes the parent pom before injecting local properties.
+                 To test clear your local m2 repo of the lumify root pom, then maven compile. -->
+            <url>http://bits.lumify.io/m2/</url>
+        </repository>
+        <repository>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+            <id>lumify-snapshots</id>
+            <!-- The url needs to be hardcoded here because maven processes the parent pom before injecting local properties.
+                 To test clear your local m2 repo of the lumify root pom, then maven compile. -->
+            <url>http://bits.lumify.io/m2/</url>
+        </repository>
+    </repositories>
+</project>
