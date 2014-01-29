@@ -92,6 +92,9 @@ public class Import extends CommandLineBase {
         }
 
         Concept wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
+        if (wikipediaPageConcept == null) {
+            throw new RuntimeException("wikipediaPage concept not found");
+        }
 
         FileInputStream fileInputStream = new FileInputStream(inputFile);
         BZip2CompressorInputStream in = new BZip2CompressorInputStream(fileInputStream);

@@ -50,10 +50,14 @@ public class WikipediaBolt extends BaseLumifyBolt {
     private Relationship wikipediaPageInternalLinkWikipediaPageRelationship;
     private XPathExpression<Text> textXPath;
     private XPathExpression<Text> titleXPath;
+    private boolean flushAfterEachRecord;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
+
+        flushAfterEachRecord = Boolean.parseBoolean(stormConf.get(WikipediaConstants.CONFIG_FLUSH).toString());
+        LOGGER.info("flushAfterEachRecord: " + flushAfterEachRecord);
 
         try {
             LOGGER.info("Create sweble compiler");
@@ -66,13 +70,25 @@ public class WikipediaBolt extends BaseLumifyBolt {
 
             LOGGER.info("Getting ontology concepts");
             wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
+            if (wikipediaPageConcept == null) {
+                throw new RuntimeException("wikipediaPage concept not found");
+            }
             wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
+            if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
+                throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
+            }
 
             LOGGER.info("prepare complete");
         } catch (Exception e) {
             collector.reportError(e);
             throw new RuntimeException("Could not initialize", e);
         }
+    }
+
+    @Override
+    public void cleanup() {
+        graph.flush();
+        super.cleanup();
     }
 
     @Override
@@ -133,7 +149,9 @@ public class WikipediaBolt extends BaseLumifyBolt {
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
         }
 
-        graph.flush();
+        if (flushAfterEachRecord) {
+            graph.flush();
+        }
     }
 
     private String textToString(Text text) {
