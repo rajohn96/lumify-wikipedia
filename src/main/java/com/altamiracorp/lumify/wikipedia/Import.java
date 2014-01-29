@@ -140,7 +140,7 @@ public class Import extends CommandLineBase {
                     pageTitle = null;
                     page.append(line);
                     page.append("\n");
-                } else if ((m = pageTitlePattern.matcher(line)) != null && m.matches()) {
+                } else if (line.contains("<title>") && (m = pageTitlePattern.matcher(line)) != null && m.matches()) {
                     pageTitle = m.group(1);
                 } else if (page != null && line.contains("</page>") && line.trim().equals("</page>")) {
                     pageCount++;
@@ -148,9 +148,7 @@ public class Import extends CommandLineBase {
                         LOGGER.info("Processing page " + numberFormatter.format(pageCount));
                     }
 
-                    if (page == null) {
-                        LOGGER.error("Found end page without start page. Line %d", lineNumber);
-                    } else if (pageTitle == null) {
+                    if (pageTitle == null) {
                         LOGGER.error("Found end page without page title. Line %d", lineNumber);
                     } else {
                         String pageString = page.toString();
