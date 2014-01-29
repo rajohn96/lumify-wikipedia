@@ -62,6 +62,15 @@ public class Import extends CommandLineBase {
 
         options.addOption(
                 OptionBuilder
+                        .withLongOpt("startline")
+                        .withDescription("The line number to start at.")
+                        .hasArg(true)
+                        .withArgName("number")
+                        .create()
+        );
+
+        options.addOption(
+                OptionBuilder
                         .withLongOpt("flush")
                         .withDescription("Flush after each page")
                         .hasArg(false)
@@ -74,6 +83,11 @@ public class Import extends CommandLineBase {
     @Override
     protected int run(CommandLine cmd) throws Exception {
         Visibility visibility = new Visibility("");
+
+        int startLine = 0;
+        if (cmd.hasOption("startline")) {
+            startLine = Integer.parseInt(cmd.getOptionValue("startline"));
+        }
 
         int pageCountToImport = Integer.MAX_VALUE;
         if (cmd.hasOption("pagecount")) {
@@ -106,6 +120,13 @@ public class Import extends CommandLineBase {
             StringBuilder page = null;
             Matcher m;
             String pageTitle = null;
+
+            if (startLine > 0) {
+                while (reader.readLine() != null && lineNumber < startLine) {
+                    lineNumber++;
+                }
+            }
+
             while ((line = reader.readLine()) != null) {
                 if ((lineNumber % 100000) == 0) {
                     LOGGER.info("Processing line " + numberFormatter.format(lineNumber));
@@ -121,7 +142,7 @@ public class Import extends CommandLineBase {
                     page.append("\n");
                 } else if ((m = pageTitlePattern.matcher(line)) != null && m.matches()) {
                     pageTitle = m.group(1);
-                } else if (line.contains("</page>") && line.trim().equals("</page>")) {
+                } else if (page != null && line.contains("</page>") && line.trim().equals("</page>")) {
                     pageCount++;
                     if ((pageCount % 1000) == 0) {
                         LOGGER.info("Processing page " + numberFormatter.format(pageCount));
