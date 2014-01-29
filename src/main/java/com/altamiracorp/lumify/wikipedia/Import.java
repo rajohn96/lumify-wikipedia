@@ -108,7 +108,7 @@ public class Import extends CommandLineBase {
             String pageTitle = null;
             while ((line = reader.readLine()) != null) {
                 if ((lineNumber % 100000) == 0) {
-                    System.out.println("Processing line " + numberFormatter.format(lineNumber));
+                    LOGGER.info("Processing line " + numberFormatter.format(lineNumber));
                 }
                 if (page != null) {
                     page.append(line);
@@ -124,7 +124,7 @@ public class Import extends CommandLineBase {
                 } else if (line.contains("</page>") && line.trim().equals("</page>")) {
                     pageCount++;
                     if ((pageCount % 1000) == 0) {
-                        System.out.println("Processing page " + numberFormatter.format(pageCount));
+                        LOGGER.info("Processing page " + numberFormatter.format(pageCount));
                     }
 
                     if (page == null) {
