@@ -31,7 +31,36 @@ import org.sweble.wikitext.lazy.parser.InternalLink;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
+
+/*
+
+Example page xml
+
+<page>
+    <title>AccessibleComputing</title>
+    <ns>0</ns>
+    <id>10</id>
+    <redirect title="Computer accessibility" />
+    <revision>
+      <id>381202555</id>
+      <parentid>381200179</parentid>
+      <timestamp>2010-08-26T22:38:36Z</timestamp>
+      <contributor>
+        <username>OlEnglish</username>
+        <id>7181920</id>
+      </contributor>
+      <minor />
+      <comment>[[Help:Reverting|Reverted]] edits by [[Special:Contributions/76.28.186.133|76.28.186.133]] ([[User talk:76.28.186.133|talk]]) to last version by Gurch</comment>
+      <text xml:space="preserve">#REDIRECT [[Computer accessibility]] {{R from CamelCase}}</text>
+      <sha1>lo15ponaybcg2sf49sstw9gdjmdetnk</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+ */
 
 public class WikipediaBolt extends BaseLumifyBolt {
     private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(WikipediaBolt.class);
@@ -42,6 +71,8 @@ public class WikipediaBolt extends BaseLumifyBolt {
     public static final String TITLE_LOW_PRIORITY = "2";
     public static final String TEXT_XPATH = "/page/revision/text/text()";
     public static final String TITLE_XPATH = "/page/title/text()";
+    public static final String REVISION_TIMESTAMP_XPATH = "/page/revision/timestamp/text()";
+    public static final SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
     private Graph graph;
     private Compiler compiler;
     private SimpleWikiConfiguration config;
@@ -50,6 +81,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
     private Relationship wikipediaPageInternalLinkWikipediaPageRelationship;
     private XPathExpression<Text> textXPath;
     private XPathExpression<Text> titleXPath;
+    private XPathExpression<Text> revisionTimestampXPath;
     private boolean flushAfterEachRecord;
 
     @Override
@@ -67,6 +99,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
 
             textXPath = XPathFactory.instance().compile(TEXT_XPATH, Filters.text());
             titleXPath = XPathFactory.instance().compile(TITLE_XPATH, Filters.text());
+            revisionTimestampXPath = XPathFactory.instance().compile(REVISION_TIMESTAMP_XPATH, Filters.text());
 
             LOGGER.info("Getting ontology concepts");
             wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
@@ -110,11 +143,18 @@ public class WikipediaBolt extends BaseLumifyBolt {
         InputStream in = rawValue.getInputStream();
         String wikitext;
         String title;
+        Date revisionTimestamp = null;
         try {
             SAXBuilder builder = new SAXBuilder();
             Document doc = builder.build(in);
             title = textToString(titleXPath.evaluateFirst(doc));
             wikitext = textToString(textXPath.evaluateFirst(doc));
+            String revisionTimestampString = textToString(revisionTimestampXPath.evaluateFirst(doc));
+            try {
+                revisionTimestamp = ISO8601DATEFORMAT.parse(revisionTimestampString);
+            } catch (Exception ex) {
+                LOGGER.error("Could not parse revision timestamp %s", revisionTimestampString, ex);
+            }
         } finally {
             in.close();
         }
@@ -134,6 +174,9 @@ public class WikipediaBolt extends BaseLumifyBolt {
         ElementMutation<Vertex> m = pageVertex.prepareMutation();
         if (title != null || title.length() > 0) {
             m.addPropertyValue(TITLE_HIGH_PRIORITY, PropertyName.TITLE.toString(), title, visibility);
+        }
+        if (revisionTimestamp != null) {
+            m.setProperty(PropertyName.PUBLISHED_DATE.toString(), revisionTimestamp, visibility);
         }
         m.setProperty(PropertyName.TEXT.toString(), textPropertyValue, visibility);
         m.save();
@@ -158,7 +201,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
         if (text == null) {
             return "";
         }
-        return text.toString();
+        return text.getText();
     }
 
     @Inject
