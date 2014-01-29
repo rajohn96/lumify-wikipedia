@@ -84,9 +84,9 @@ public class Import extends CommandLineBase {
     protected int run(CommandLine cmd) throws Exception {
         Visibility visibility = new Visibility("");
 
-        int startLine = 0;
+        long startLine = 0;
         if (cmd.hasOption("startline")) {
-            startLine = Integer.parseInt(cmd.getOptionValue("startline"));
+            startLine = Long.parseLong(cmd.getOptionValue("startline"));
         }
 
         int pageCountToImport = Integer.MAX_VALUE;
@@ -114,7 +114,7 @@ public class Import extends CommandLineBase {
         BZip2CompressorInputStream in = new BZip2CompressorInputStream(fileInputStream);
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         try {
-            int lineNumber = 1;
+            long lineNumber = 1;
             int pageCount = 0;
             String line;
             StringBuilder page = null;
