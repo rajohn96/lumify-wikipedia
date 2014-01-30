@@ -123,6 +123,9 @@ public class Import extends CommandLineBase {
 
             if (startLine > 0) {
                 while (reader.readLine() != null && lineNumber < startLine) {
+                    if ((lineNumber % 100000) == 0) {
+                        LOGGER.info("Skipping line " + numberFormatter.format(lineNumber));
+                    }
                     lineNumber++;
                 }
             }
