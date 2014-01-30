@@ -71,6 +71,15 @@ public class Import extends CommandLineBase {
 
         options.addOption(
                 OptionBuilder
+                        .withLongOpt("startoffset")
+                        .withDescription("The byte offset to start at.")
+                        .hasArg(true)
+                        .withArgName("number")
+                        .create()
+        );
+
+        options.addOption(
+                OptionBuilder
                         .withLongOpt("flush")
                         .withDescription("Flush after each page")
                         .hasArg(false)
@@ -87,6 +96,11 @@ public class Import extends CommandLineBase {
         long startLine = 0;
         if (cmd.hasOption("startline")) {
             startLine = Long.parseLong(cmd.getOptionValue("startline"));
+        }
+
+        Long startOffset = null;
+        if (cmd.hasOption("startoffset")) {
+            startOffset = Long.parseLong(cmd.getOptionValue("startoffset"));
         }
 
         int pageCountToImport = Integer.MAX_VALUE;
@@ -110,8 +124,21 @@ public class Import extends CommandLineBase {
             throw new RuntimeException("wikipediaPage concept not found");
         }
 
-        FileInputStream fileInputStream = new FileInputStream(inputFile);
-        BZip2CompressorInputStream in = new BZip2CompressorInputStream(fileInputStream);
+        RandomAccessFile randomAccessFile = null;
+        InputStream in;
+        if (inputFile.getName().endsWith("bz2")) {
+            if (startOffset != null) {
+                throw new RuntimeException("start offset not supported for bz2 files");
+            }
+            FileInputStream fileInputStream = new FileInputStream(inputFile);
+            in = new BZip2CompressorInputStream(fileInputStream);
+        } else {
+            randomAccessFile = new RandomAccessFile(inputFile, "r");
+            if (startOffset != null) {
+                randomAccessFile.seek(startOffset);
+            }
+            in = new RandomAccessFileInputStream(randomAccessFile);
+        }
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         try {
             long lineNumber = 1;
@@ -132,7 +159,7 @@ public class Import extends CommandLineBase {
 
             while ((line = reader.readLine()) != null) {
                 if ((lineNumber % 100000) == 0) {
-                    LOGGER.info("Processing line " + numberFormatter.format(lineNumber));
+                    LOGGER.info("Processing line " + numberFormatter.format(lineNumber) + (randomAccessFile == null ? "" : " (offset: " + randomAccessFile.getFilePointer() + ")"));
                 }
                 if (page != null) {
                     page.append(line);
