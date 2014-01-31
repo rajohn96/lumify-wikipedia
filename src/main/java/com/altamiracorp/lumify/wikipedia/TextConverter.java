@@ -26,8 +26,6 @@ public class TextConverter extends AstVisitor {
 
     private final SimpleWikiConfiguration config;
 
-    private final int wrapCol;
-
     private StringBuilder sb;
 
     private StringBuilder line;
@@ -40,16 +38,13 @@ public class TextConverter extends AstVisitor {
 
     private boolean needSpace;
 
-    private final boolean noWrap = true;
-
     private LinkedList<Integer> sections;
-    private List<InternalLink> internalLinks = new ArrayList<InternalLink>();
+    private List<InternalLinkWithOffsets> internalLinks = new ArrayList<InternalLinkWithOffsets>();
 
     // =========================================================================
 
-    public TextConverter(SimpleWikiConfiguration config, int wrapCol) {
+    public TextConverter(SimpleWikiConfiguration config) {
         this.config = config;
-        this.wrapCol = wrapCol;
     }
 
     @Override
@@ -147,7 +142,7 @@ public class TextConverter extends AstVisitor {
     }
 
     public void visit(InternalLink link) {
-        internalLinks.add(link);
+        int startOffset = getCurrentOffset();
         try {
             PageTitle page = PageTitle.make(config, link.getTarget());
             if (page.getNamespace().equals(config.getNamespace("Category"))) {
@@ -163,6 +158,9 @@ public class TextConverter extends AstVisitor {
             iterate(link.getTitle());
         }
         write(link.getPostfix());
+        int endOffset = getCurrentOffset();
+
+        internalLinks.add(new InternalLinkWithOffsets(link, startOffset, endOffset));
     }
 
     public void visit(Section s) {
@@ -307,18 +305,21 @@ public class TextConverter extends AstVisitor {
         if (s.isEmpty())
             return;
 
-        if (Character.isSpaceChar(s.charAt(0)))
+        if (Character.isSpaceChar(s.charAt(0))) {
             wantSpace();
+        }
 
         String[] words = ws.split(s);
         for (int i = 0; i < words.length; ) {
             writeWord(words[i]);
-            if (++i < words.length)
+            if (++i < words.length) {
                 wantSpace();
+            }
         }
 
-        if (Character.isSpaceChar(s.charAt(s.length() - 1)))
+        if (Character.isSpaceChar(s.charAt(s.length() - 1))) {
             wantSpace();
+        }
     }
 
     private void write(char[] cs) {
@@ -333,7 +334,11 @@ public class TextConverter extends AstVisitor {
         writeWord(String.valueOf(num));
     }
 
-    public List<InternalLink> getInternalLinks() {
+    public List<InternalLinkWithOffsets> getInternalLinks() {
         return internalLinks;
+    }
+
+    public int getCurrentOffset() {
+        return sb.length() + line.length();
     }
 }

@@ -3,9 +3,14 @@ package com.altamiracorp.lumify.wikipedia;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
+import com.altamiracorp.bigtable.model.FlushFlag;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.PropertyName;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
+import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
+import com.altamiracorp.lumify.core.model.termMention.TermMentionRepository;
+import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
+import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.storm.BaseLumifyBolt;
@@ -27,7 +32,6 @@ import org.sweble.wikitext.engine.Compiler;
 import org.sweble.wikitext.engine.PageId;
 import org.sweble.wikitext.engine.PageTitle;
 import org.sweble.wikitext.engine.utils.SimpleWikiConfiguration;
-import org.sweble.wikitext.lazy.parser.InternalLink;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -73,7 +77,10 @@ public class WikipediaBolt extends BaseLumifyBolt {
     public static final String TITLE_XPATH = "/page/title/text()";
     public static final String REVISION_TIMESTAMP_XPATH = "/page/revision/timestamp/text()";
     public static final SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+    public static final String WIKIPEDIA_PAGE_CONCEPT_NAME = "wikipediaPage";
     private Graph graph;
+    private TermMentionRepository termMentionRepository;
+    private WorkQueueRepository workQueueRepository;
     private Compiler compiler;
     private SimpleWikiConfiguration config;
     private Visibility visibility;
@@ -102,7 +109,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             revisionTimestampXPath = XPathFactory.instance().compile(REVISION_TIMESTAMP_XPATH, Filters.text());
 
             LOGGER.info("Getting ontology concepts");
-            wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
+            wikipediaPageConcept = ontologyRepository.getConceptByName(WIKIPEDIA_PAGE_CONCEPT_NAME);
             if (wikipediaPageConcept == null) {
                 throw new RuntimeException("wikipediaPage concept not found");
             }
@@ -163,7 +170,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
         PageTitle pageTitle = PageTitle.make(config, fileTitle);
         PageId pageId = new PageId(pageTitle, -1);
         CompiledPage compiledPage = compiler.postprocess(pageId, wikitext, null);
-        TextConverter p = new TextConverter(config, 100000);
+        TextConverter p = new TextConverter(config);
         String text = (String) p.go(compiledPage.getPage());
         if (text.length() == 0) {
             text = wikitext;
@@ -181,19 +188,30 @@ public class WikipediaBolt extends BaseLumifyBolt {
         m.setProperty(PropertyName.TEXT.toString(), textPropertyValue, visibility);
         m.save();
 
-        for (InternalLink link : p.getInternalLinks()) {
-            String linkVertexId = getWikipediaPageVertexId(link.getTarget());
+        for (InternalLinkWithOffsets link : p.getInternalLinks()) {
+            String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
             Vertex linkedPageVertex = graph.prepareVertex(linkVertexId, visibility, getUser().getAuthorizations())
                     .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConcept.getId(), visibility)
                     .setProperty(PropertyName.MIME_TYPE.toString(), "text/plain", visibility)
                     .setProperty(PropertyName.SOURCE.toString(), "Wikipedia", visibility)
-                    .addPropertyValue(TITLE_LOW_PRIORITY, PropertyName.TITLE.toString(), link.getTarget(), visibility)
+                    .addPropertyValue(TITLE_LOW_PRIORITY, PropertyName.TITLE.toString(), link.getLink().getTarget(), visibility)
                     .save();
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
+
+            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(), link.getEndOffset()));
+            termMention.getMetadata()
+                    .setConceptGraphVertexId(wikipediaPageConcept.getId())
+                    .setSign(link.getLink().getTarget())
+                    .setVertexId(linkedPageVertex.getId().toString())
+                    .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
+            this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH, getUser().getModelUserContext());
         }
 
+        this.workQueueRepository.pushArtifactHighlight(pageVertex.getId().toString(), FlushFlag.NO_FLUSH);
+
         if (flushAfterEachRecord) {
-            graph.flush();
+            this.termMentionRepository.flush();
+            this.graph.flush();
         }
     }
 
@@ -207,6 +225,16 @@ public class WikipediaBolt extends BaseLumifyBolt {
     @Inject
     public void setGraph(Graph graph) {
         this.graph = graph;
+    }
+
+    @Inject
+    public void setTermMentionRepository(TermMentionRepository termMentionRepository) {
+        this.termMentionRepository = termMentionRepository;
+    }
+
+    @Inject
+    public void setWorkQueueRepository(WorkQueueRepository workQueueRepository) {
+        this.workQueueRepository = workQueueRepository;
     }
 
     private static String getWikipediaPageToPageEdgeId(Vertex pageVertex, Vertex linkedPageVertex) {
