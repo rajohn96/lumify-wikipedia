@@ -218,6 +218,6 @@ public class WikipediaBolt extends BaseLumifyBolt {
     }
 
     public static String getWikipediaPageVertexId(String pageTitle) {
-        return WIKIPEDIA_ID_PREFIX + pageTitle.toLowerCase().replaceAll("[^a-zA-Z0-9]", "_");
+        return WIKIPEDIA_ID_PREFIX + pageTitle;
     }
 }
