@@ -2,6 +2,8 @@ package com.altamiracorp.lumify.wikipedia;
 
 import com.altamiracorp.bigtable.model.FlushFlag;
 import com.altamiracorp.lumify.core.cmdline.CommandLineBase;
+import com.altamiracorp.lumify.core.model.audit.AuditAction;
+import com.altamiracorp.lumify.core.model.audit.AuditRepository;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
 import com.altamiracorp.lumify.core.model.ontology.PropertyName;
@@ -9,6 +11,7 @@ import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.securegraph.Graph;
+import com.altamiracorp.securegraph.Vertex;
 import com.altamiracorp.securegraph.Visibility;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.google.inject.Inject;
@@ -27,9 +30,19 @@ public class Import extends CommandLineBase {
     private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(Import.class);
     private static final DecimalFormat numberFormatter = new DecimalFormat("#,###");
     private static final Pattern pageTitlePattern = Pattern.compile(".*?<title>(.*?)</title>.*");
+    private static final String AUDIT_PROCESS_NAME = Import.class.getName();
     private Graph graph;
     private WorkQueueRepository workQueueRepository;
     private OntologyRepository ontologyRepository;
+    private AuditRepository auditRepository;
+    private Visibility visibility = new Visibility("");
+    private long startLine = 0;
+    private Long startOffset = null;
+    private int pageCountToImport = Integer.MAX_VALUE;
+    private boolean flush;
+    private Concept wikipediaPageConcept;
+    private RandomAccessFile randomAccessFile = null;
+    private InputStream in;
 
     public static void main(String[] args) throws Exception {
         int res = new Import().run(args);
@@ -90,26 +103,24 @@ public class Import extends CommandLineBase {
     }
 
     @Override
-    protected int run(CommandLine cmd) throws Exception {
-        Visibility visibility = new Visibility("");
+    protected void processOptions(CommandLine cmd) throws Exception {
+        super.processOptions(cmd);
 
-        long startLine = 0;
         if (cmd.hasOption("startline")) {
             startLine = Long.parseLong(cmd.getOptionValue("startline"));
         }
 
-        Long startOffset = null;
         if (cmd.hasOption("startoffset")) {
             startOffset = Long.parseLong(cmd.getOptionValue("startoffset"));
         }
 
-        int pageCountToImport = Integer.MAX_VALUE;
         if (cmd.hasOption("pagecount")) {
             pageCountToImport = Integer.parseInt(cmd.getOptionValue("pagecount"));
         }
 
-        boolean flush = cmd.hasOption("flush");
-        String inputFileName = cmd.getOptionValue("in");
+        flush = cmd.hasOption("flush");
+        String inputFileName;
+        inputFileName = cmd.getOptionValue("in");
         if (inputFileName == null) {
             throw new RuntimeException("in is required");
         }
@@ -119,13 +130,6 @@ public class Import extends CommandLineBase {
             throw new RuntimeException("Could not find " + inputFileName);
         }
 
-        Concept wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
-        if (wikipediaPageConcept == null) {
-            throw new RuntimeException("wikipediaPage concept not found");
-        }
-
-        RandomAccessFile randomAccessFile = null;
-        InputStream in;
         if (inputFile.getName().endsWith("bz2")) {
             if (startOffset != null) {
                 throw new RuntimeException("start offset not supported for bz2 files");
@@ -139,6 +143,15 @@ public class Import extends CommandLineBase {
             }
             in = new RandomAccessFileInputStream(randomAccessFile);
         }
+    }
+
+    @Override
+    protected int run(CommandLine cmd) throws Exception {
+        wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
+        if (wikipediaPageConcept == null) {
+            throw new RuntimeException("wikipediaPage concept not found");
+        }
+
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         try {
             long lineNumber = 1;
@@ -181,23 +194,12 @@ public class Import extends CommandLineBase {
                     if (pageTitle == null) {
                         LOGGER.error("Found end page without page title. Line %d", lineNumber);
                     } else {
-                        String pageString = page.toString();
-                        String wikipediaPageVertexId = WikipediaBolt.getWikipediaPageVertexId(pageTitle);
-                        StreamingPropertyValue rawPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(pageString.getBytes()), byte[].class);
-                        rawPropertyValue.store(true);
-                        rawPropertyValue.searchIndex(false);
-                        graph.prepareVertex(wikipediaPageVertexId, visibility, getUser().getAuthorizations())
-                                .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConcept.getId(), visibility)
-                                .setProperty(PropertyName.RAW.toString(), rawPropertyValue, visibility)
-                                .addPropertyValue(WikipediaBolt.TITLE_MEDIUM_PRIORITY, PropertyName.TITLE.toString(), pageTitle, visibility)
-                                .setProperty(PropertyName.MIME_TYPE.toString(), "text/plain", visibility)
-                                .setProperty(PropertyName.SOURCE.toString(), "Wikipedia", visibility)
-                                .save();
+                        Vertex wikipediaPageVertex = savePageVertex(page, pageTitle, wikipediaPageConcept);
                         if (flush || pageCount < 100) { // We call flush for the first 100 so that we can saturate the storm topology otherwise we'll get vertex not found problems.
-                            graph.flush();
+                            this.graph.flush();
                         }
                         JSONObject workJson = new JSONObject();
-                        workJson.put("vertexId", wikipediaPageVertexId);
+                        workJson.put("vertexId", wikipediaPageVertex.getId().toString());
                         this.workQueueRepository.pushOnQueue(WikipediaConstants.WIKIPEDIA_QUEUE, FlushFlag.NO_FLUSH, workJson);
                     }
 
@@ -208,12 +210,31 @@ public class Import extends CommandLineBase {
                 lineNumber++;
             }
         } finally {
-            graph.flush();
+            this.graph.flush();
             this.workQueueRepository.flush();
             reader.close();
         }
 
         return 0;
+    }
+
+    private Vertex savePageVertex(StringBuilder page, String pageTitle, Concept wikipediaPageConcept) {
+        String pageString = page.toString();
+        String wikipediaPageVertexId = WikipediaBolt.getWikipediaPageVertexId(pageTitle);
+        StreamingPropertyValue rawPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(pageString.getBytes()), byte[].class);
+        rawPropertyValue.store(true);
+        rawPropertyValue.searchIndex(false);
+        Vertex vertex = graph.prepareVertex(wikipediaPageVertexId, visibility, getUser().getAuthorizations())
+                .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConcept.getId(), visibility)
+                .setProperty(PropertyName.RAW.toString(), rawPropertyValue, visibility)
+                .addPropertyValue(WikipediaBolt.TITLE_MEDIUM_PRIORITY, PropertyName.TITLE.toString(), pageTitle, visibility)
+                .setProperty(PropertyName.MIME_TYPE.toString(), "text/plain", visibility)
+                .setProperty(PropertyName.SOURCE.toString(), "Wikipedia", visibility)
+                .save();
+
+        this.auditRepository.auditVertex(AuditAction.UPDATE, vertex.getId(), AUDIT_PROCESS_NAME, "Raw set", getUser(), FlushFlag.NO_FLUSH);
+
+        return vertex;
     }
 
     @Inject
@@ -229,5 +250,10 @@ public class Import extends CommandLineBase {
     @Inject
     public void setOntologyRepository(OntologyRepository ontologyRepository) {
         this.ontologyRepository = ontologyRepository;
+    }
+
+    @Inject
+    public void setAuditRepository(AuditRepository auditRepository) {
+        this.auditRepository = auditRepository;
     }
 }
