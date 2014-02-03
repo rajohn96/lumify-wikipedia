@@ -4,6 +4,7 @@ import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
 import com.altamiracorp.bigtable.model.FlushFlag;
+import com.altamiracorp.lumify.core.model.audit.AuditAction;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.PropertyName;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
@@ -78,6 +79,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
     public static final String REVISION_TIMESTAMP_XPATH = "/page/revision/timestamp/text()";
     public static final SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
     public static final String WIKIPEDIA_PAGE_CONCEPT_NAME = "wikipediaPage";
+    private static final String AUDIT_PROCESS_NAME = WikipediaBolt.class.getName();
     private Graph graph;
     private TermMentionRepository termMentionRepository;
     private WorkQueueRepository workQueueRepository;
@@ -188,6 +190,8 @@ public class WikipediaBolt extends BaseLumifyBolt {
         m.setProperty(PropertyName.TEXT.toString(), textPropertyValue, visibility);
         m.save();
 
+        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH);
+
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
             Vertex linkedPageVertex = graph.prepareVertex(linkVertexId, visibility, getUser().getAuthorizations())
@@ -197,6 +201,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
                     .addPropertyValue(TITLE_LOW_PRIORITY, PropertyName.TITLE.toString(), link.getLink().getTarget(), visibility)
                     .save();
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
+            this.auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created", getUser());
 
             TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(), link.getEndOffset()));
             termMention.getMetadata()
