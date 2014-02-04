@@ -15,14 +15,10 @@ import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.storm.BaseLumifyBolt;
-import com.altamiracorp.securegraph.ElementMutation;
-import com.altamiracorp.securegraph.Graph;
-import com.altamiracorp.securegraph.Vertex;
-import com.altamiracorp.securegraph.Visibility;
+import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.google.inject.Inject;
 import org.jdom2.Document;
-import org.jdom2.Text;
 import org.jdom2.filter.Filters;
 import org.jdom2.input.SAXBuilder;
 import org.jdom2.xpath.XPathExpression;
@@ -88,10 +84,11 @@ public class WikipediaBolt extends BaseLumifyBolt {
     private Visibility visibility;
     private Concept wikipediaPageConcept;
     private Relationship wikipediaPageInternalLinkWikipediaPageRelationship;
-    private XPathExpression<Text> textXPath;
-    private XPathExpression<Text> titleXPath;
-    private XPathExpression<Text> revisionTimestampXPath;
+    private XPathExpression<org.jdom2.Text> textXPath;
+    private XPathExpression<org.jdom2.Text> titleXPath;
+    private XPathExpression<org.jdom2.Text> revisionTimestampXPath;
     private boolean flushAfterEachRecord;
+    private Object wikipediaPageConceptId;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -114,6 +111,10 @@ public class WikipediaBolt extends BaseLumifyBolt {
             wikipediaPageConcept = ontologyRepository.getConceptByName(WIKIPEDIA_PAGE_CONCEPT_NAME);
             if (wikipediaPageConcept == null) {
                 throw new RuntimeException("wikipediaPage concept not found");
+            }
+            wikipediaPageConceptId = wikipediaPageConcept.getId();
+            if (wikipediaPageConceptId instanceof String) {
+                wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndex.EXACT_MATCH);
             }
             wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
             if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
@@ -195,10 +196,10 @@ public class WikipediaBolt extends BaseLumifyBolt {
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
             Vertex linkedPageVertex = graph.prepareVertex(linkVertexId, visibility, getUser().getAuthorizations())
-                    .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConcept.getId(), visibility)
-                    .setProperty(PropertyName.MIME_TYPE.toString(), "text/plain", visibility)
-                    .setProperty(PropertyName.SOURCE.toString(), "Wikipedia", visibility)
-                    .addPropertyValue(TITLE_LOW_PRIORITY, PropertyName.TITLE.toString(), link.getLink().getTarget(), visibility)
+                    .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConceptId, visibility)
+                    .setProperty(PropertyName.MIME_TYPE.toString(), new Text("text/plain"), visibility)
+                    .setProperty(PropertyName.SOURCE.toString(), new Text("Wikipedia"), visibility)
+                    .addPropertyValue(TITLE_LOW_PRIORITY, PropertyName.TITLE.toString(), new Text(link.getLink().getTarget()), visibility)
                     .save();
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
             this.auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created", getUser());
@@ -220,7 +221,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
         }
     }
 
-    private String textToString(Text text) {
+    private String textToString(org.jdom2.Text text) {
         if (text == null) {
             return "";
         }
