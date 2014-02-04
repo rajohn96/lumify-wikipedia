@@ -10,9 +10,7 @@ import com.altamiracorp.lumify.core.model.ontology.PropertyName;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.securegraph.Graph;
-import com.altamiracorp.securegraph.Vertex;
-import com.altamiracorp.securegraph.Visibility;
+import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.google.inject.Inject;
 import org.apache.commons.cli.CommandLine;
@@ -43,6 +41,7 @@ public class Import extends CommandLineBase {
     private Concept wikipediaPageConcept;
     private RandomAccessFile randomAccessFile = null;
     private InputStream in;
+    private Object wikipediaPageConceptId;
 
     public static void main(String[] args) throws Exception {
         int res = new Import().run(args);
@@ -152,6 +151,11 @@ public class Import extends CommandLineBase {
             throw new RuntimeException("wikipediaPage concept not found");
         }
 
+        wikipediaPageConceptId = wikipediaPageConcept.getId();
+        if (wikipediaPageConceptId instanceof String) {
+            wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndex.EXACT_MATCH);
+        }
+
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         try {
             long lineNumber = 1;
@@ -225,11 +229,11 @@ public class Import extends CommandLineBase {
         rawPropertyValue.store(true);
         rawPropertyValue.searchIndex(false);
         Vertex vertex = graph.prepareVertex(wikipediaPageVertexId, visibility, getUser().getAuthorizations())
-                .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConcept.getId(), visibility)
+                .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConceptId, visibility)
                 .setProperty(PropertyName.RAW.toString(), rawPropertyValue, visibility)
-                .addPropertyValue(WikipediaBolt.TITLE_MEDIUM_PRIORITY, PropertyName.TITLE.toString(), pageTitle, visibility)
-                .setProperty(PropertyName.MIME_TYPE.toString(), "text/plain", visibility)
-                .setProperty(PropertyName.SOURCE.toString(), "Wikipedia", visibility)
+                .addPropertyValue(WikipediaBolt.TITLE_MEDIUM_PRIORITY, PropertyName.TITLE.toString(), new Text(pageTitle), visibility)
+                .setProperty(PropertyName.MIME_TYPE.toString(), new Text("text/plain"), visibility)
+                .setProperty(PropertyName.SOURCE.toString(), new Text("Wikipedia"), visibility)
                 .save();
 
         this.auditRepository.auditVertex(AuditAction.UPDATE, vertex.getId(), AUDIT_PROCESS_NAME, "Raw set", getUser(), FlushFlag.NO_FLUSH);
