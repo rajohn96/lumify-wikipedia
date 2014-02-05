@@ -1,39 +1,52 @@
 package com.altamiracorp.lumify.wikipedia;
 
+import static com.altamiracorp.lumify.core.model.ontology.OntologyLumifyProperties.*;
+import static com.altamiracorp.lumify.core.model.properties.EntityLumifyProperties.*;
+import static com.altamiracorp.lumify.core.model.properties.LumifyProperties.*;
+import static com.altamiracorp.lumify.core.model.properties.RawLumifyProperties.*;
+
 import com.altamiracorp.bigtable.model.FlushFlag;
 import com.altamiracorp.lumify.core.cmdline.CommandLineBase;
 import com.altamiracorp.lumify.core.model.audit.AuditAction;
 import com.altamiracorp.lumify.core.model.audit.AuditRepository;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
-import com.altamiracorp.lumify.core.model.ontology.PropertyName;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.securegraph.*;
+import com.altamiracorp.securegraph.Graph;
+import com.altamiracorp.securegraph.Vertex;
+import com.altamiracorp.securegraph.VertexBuilder;
+import com.altamiracorp.securegraph.Visibility;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.google.inject.Inject;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
+import java.text.DecimalFormat;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.json.JSONObject;
 
-import java.io.*;
-import java.text.DecimalFormat;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class Import extends CommandLineBase {
     private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(Import.class);
     private static final DecimalFormat numberFormatter = new DecimalFormat("#,###");
     private static final Pattern pageTitlePattern = Pattern.compile(".*?<title>(.*?)</title>.*");
     private static final String AUDIT_PROCESS_NAME = Import.class.getName();
+
     private Graph graph;
     private WorkQueueRepository workQueueRepository;
     private OntologyRepository ontologyRepository;
     private AuditRepository auditRepository;
-    private Visibility visibility = new Visibility("");
+    private final Visibility visibility = new Visibility("");
     private long startLine = 0;
     private Long startOffset = null;
     private int pageCountToImport = Integer.MAX_VALUE;
@@ -41,7 +54,7 @@ public class Import extends CommandLineBase {
     private Concept wikipediaPageConcept;
     private RandomAccessFile randomAccessFile = null;
     private InputStream in;
-    private Object wikipediaPageConceptId;
+    private String wikipediaPageConceptId;
 
     public static void main(String[] args) throws Exception {
         int res = new Import().run(args);
@@ -152,9 +165,6 @@ public class Import extends CommandLineBase {
         }
 
         wikipediaPageConceptId = wikipediaPageConcept.getId();
-        if (wikipediaPageConceptId instanceof String) {
-            wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndex.EXACT_MATCH);
-        }
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         try {
@@ -228,13 +238,13 @@ public class Import extends CommandLineBase {
         StreamingPropertyValue rawPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(pageString.getBytes()), byte[].class);
         rawPropertyValue.store(true);
         rawPropertyValue.searchIndex(false);
-        Vertex vertex = graph.prepareVertex(wikipediaPageVertexId, visibility, getUser().getAuthorizations())
-                .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConceptId, visibility)
-                .setProperty(PropertyName.RAW.toString(), rawPropertyValue, visibility)
-                .addPropertyValue(WikipediaBolt.TITLE_MEDIUM_PRIORITY, PropertyName.TITLE.toString(), new Text(pageTitle), visibility)
-                .setProperty(PropertyName.MIME_TYPE.toString(), new Text("text/plain"), visibility)
-                .setProperty(PropertyName.SOURCE.toString(), new Text("Wikipedia"), visibility)
-                .save();
+        VertexBuilder builder = graph.prepareVertex(wikipediaPageVertexId, visibility, getUser().getAuthorizations());
+        CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, visibility);
+        RAW.setProperty(builder, rawPropertyValue, visibility);
+        TITLE.addPropertyValue(builder, WikipediaBolt.TITLE_MEDIUM_PRIORITY, pageTitle, visibility);
+        MIME_TYPE.setProperty(builder, WikipediaBolt.WIKIPEDIA_MIME_TYPE, visibility);
+        SOURCE.setProperty(builder, WikipediaBolt.WIKIPEDIA_SOURCE, visibility);
+        Vertex vertex = builder.save();
 
         this.auditRepository.auditVertex(AuditAction.UPDATE, vertex.getId(), AUDIT_PROCESS_NAME, "Raw set", getUser(), FlushFlag.NO_FLUSH);
 

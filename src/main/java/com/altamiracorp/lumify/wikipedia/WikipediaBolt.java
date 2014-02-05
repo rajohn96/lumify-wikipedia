@@ -1,12 +1,16 @@
 package com.altamiracorp.lumify.wikipedia;
 
+import static com.altamiracorp.lumify.core.model.ontology.OntologyLumifyProperties.CONCEPT_TYPE;
+import static com.altamiracorp.lumify.core.model.properties.EntityLumifyProperties.SOURCE;
+import static com.altamiracorp.lumify.core.model.properties.LumifyProperties.*;
+import static com.altamiracorp.lumify.core.model.properties.RawLumifyProperties.*;
+
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
 import com.altamiracorp.bigtable.model.FlushFlag;
 import com.altamiracorp.lumify.core.model.audit.AuditAction;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
-import com.altamiracorp.lumify.core.model.ontology.PropertyName;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRepository;
@@ -15,9 +19,18 @@ import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.storm.BaseLumifyBolt;
-import com.altamiracorp.securegraph.*;
+import com.altamiracorp.securegraph.ElementMutation;
+import com.altamiracorp.securegraph.Graph;
+import com.altamiracorp.securegraph.Vertex;
+import com.altamiracorp.securegraph.VertexBuilder;
+import com.altamiracorp.securegraph.Visibility;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.google.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
 import org.jdom2.Document;
 import org.jdom2.filter.Filters;
 import org.jdom2.input.SAXBuilder;
@@ -29,12 +42,6 @@ import org.sweble.wikitext.engine.Compiler;
 import org.sweble.wikitext.engine.PageId;
 import org.sweble.wikitext.engine.PageTitle;
 import org.sweble.wikitext.engine.utils.SimpleWikiConfiguration;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
 
 /*
 
@@ -73,9 +80,12 @@ public class WikipediaBolt extends BaseLumifyBolt {
     public static final String TEXT_XPATH = "/page/revision/text/text()";
     public static final String TITLE_XPATH = "/page/title/text()";
     public static final String REVISION_TIMESTAMP_XPATH = "/page/revision/timestamp/text()";
+    public static final String WIKIPEDIA_MIME_TYPE = "text/plain";
+    public static final String WIKIPEDIA_SOURCE = "Wikipedia";
     public static final SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
     public static final String WIKIPEDIA_PAGE_CONCEPT_NAME = "wikipediaPage";
     private static final String AUDIT_PROCESS_NAME = WikipediaBolt.class.getName();
+
     private Graph graph;
     private TermMentionRepository termMentionRepository;
     private WorkQueueRepository workQueueRepository;
@@ -88,7 +98,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
     private XPathExpression<org.jdom2.Text> titleXPath;
     private XPathExpression<org.jdom2.Text> revisionTimestampXPath;
     private boolean flushAfterEachRecord;
-    private Object wikipediaPageConceptId;
+    private String wikipediaPageConceptId;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -113,9 +123,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
                 throw new RuntimeException("wikipediaPage concept not found");
             }
             wikipediaPageConceptId = wikipediaPageConcept.getId();
-            if (wikipediaPageConceptId instanceof String) {
-                wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndex.EXACT_MATCH);
-            }
+
             wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
             if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
                 throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
@@ -145,7 +153,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             throw new RuntimeException("Could not find vertex: " + vertexId);
         }
 
-        StreamingPropertyValue rawValue = (StreamingPropertyValue) pageVertex.getPropertyValue(PropertyName.RAW.toString());
+        StreamingPropertyValue rawValue = RAW.getPropertyValue(pageVertex);
         if (rawValue == null) {
             throw new RuntimeException("Could not get raw value from vertex: " + vertexId);
         }
@@ -182,31 +190,35 @@ public class WikipediaBolt extends BaseLumifyBolt {
         StreamingPropertyValue textPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(text.getBytes()), String.class);
 
         ElementMutation<Vertex> m = pageVertex.prepareMutation();
-        if (title != null || title.length() > 0) {
-            m.addPropertyValue(TITLE_HIGH_PRIORITY, PropertyName.TITLE.toString(), title, visibility);
+        if (title != null && !title.trim().isEmpty()) {
+            TITLE.addPropertyValue(m, TITLE_HIGH_PRIORITY, title, visibility);
         }
         if (revisionTimestamp != null) {
-            m.setProperty(PropertyName.PUBLISHED_DATE.toString(), revisionTimestamp, visibility);
+            PUBLISHED_DATE.setProperty(m, revisionTimestamp, visibility);
         }
-        m.setProperty(PropertyName.TEXT.toString(), textPropertyValue, visibility);
+        TEXT.setProperty(m, textPropertyValue, visibility);
         m.save();
 
         this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH);
 
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
-            Vertex linkedPageVertex = graph.prepareVertex(linkVertexId, visibility, getUser().getAuthorizations())
-                    .setProperty(PropertyName.CONCEPT_TYPE.toString(), wikipediaPageConceptId, visibility)
-                    .setProperty(PropertyName.MIME_TYPE.toString(), new Text("text/plain"), visibility)
-                    .setProperty(PropertyName.SOURCE.toString(), new Text("Wikipedia"), visibility)
-                    .addPropertyValue(TITLE_LOW_PRIORITY, PropertyName.TITLE.toString(), new Text(link.getLink().getTarget()), visibility)
-                    .save();
-            graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
-            this.auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex, wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created", getUser());
+            VertexBuilder builder = graph.prepareVertex(linkVertexId, visibility, getUser().getAuthorizations());
+            CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, visibility);
+            MIME_TYPE.setProperty(builder, WIKIPEDIA_MIME_TYPE, visibility);
+            SOURCE.setProperty(builder, WIKIPEDIA_SOURCE, visibility);
+            TITLE.addPropertyValue(builder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), visibility);
+            Vertex linkedPageVertex = builder.save();
+            graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex,
+                    wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
+            auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex,
+                    wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created",
+                    getUser());
 
-            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(), link.getEndOffset()));
+            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
+                    link.getEndOffset()));
             termMention.getMetadata()
-                    .setConceptGraphVertexId(wikipediaPageConcept.getId())
+                    .setConceptGraphVertexId(wikipediaPageConceptId)
                     .setSign(link.getLink().getTarget())
                     .setVertexId(linkedPageVertex.getId().toString())
                     .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
