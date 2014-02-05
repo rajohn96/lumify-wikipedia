@@ -114,7 +114,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             }
             wikipediaPageConceptId = wikipediaPageConcept.getId();
             if (wikipediaPageConceptId instanceof String) {
-                wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndex.EXACT_MATCH);
+                wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndexHint.EXACT_MATCH);
             }
             wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
             if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {

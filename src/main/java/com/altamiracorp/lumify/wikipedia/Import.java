@@ -153,7 +153,7 @@ public class Import extends CommandLineBase {
 
         wikipediaPageConceptId = wikipediaPageConcept.getId();
         if (wikipediaPageConceptId instanceof String) {
-            wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndex.EXACT_MATCH);
+            wikipediaPageConceptId = new Text((String) wikipediaPageConceptId, TextIndexHint.EXACT_MATCH);
         }
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
