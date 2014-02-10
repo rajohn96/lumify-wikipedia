@@ -208,7 +208,9 @@ public class Import extends CommandLineBase {
                     if (pageTitle == null) {
                         LOGGER.error("Found end page without page title. Line %d", lineNumber);
                     } else {
-                        Vertex wikipediaPageVertex = savePageVertex(page, pageTitle, wikipediaPageConcept);
+                        String pageString = page.toString();
+                        page = null;
+                        Vertex wikipediaPageVertex = savePageVertex(pageString, pageTitle, wikipediaPageConcept);
                         if (flush || pageCount < 100) { // We call flush for the first 100 so that we can saturate the storm topology otherwise we'll get vertex not found problems.
                             this.graph.flush();
                         }
@@ -232,8 +234,7 @@ public class Import extends CommandLineBase {
         return 0;
     }
 
-    private Vertex savePageVertex(StringBuilder page, String pageTitle, Concept wikipediaPageConcept) {
-        String pageString = page.toString();
+    private Vertex savePageVertex(String pageString, String pageTitle, Concept wikipediaPageConcept) {
         String wikipediaPageVertexId = WikipediaBolt.getWikipediaPageVertexId(pageTitle);
         StreamingPropertyValue rawPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(pageString.getBytes()), byte[].class);
         rawPropertyValue.store(true);
