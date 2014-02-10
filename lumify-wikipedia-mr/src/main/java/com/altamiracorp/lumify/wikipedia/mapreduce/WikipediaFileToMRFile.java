@@ -1,7 +1,8 @@
-package com.altamiracorp.lumify.wikipedia;
+package com.altamiracorp.lumify.wikipedia.mapreduce;
 
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
+import com.altamiracorp.lumify.wikipedia.RandomAccessFileInputStream;
 import org.apache.commons.cli.*;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 

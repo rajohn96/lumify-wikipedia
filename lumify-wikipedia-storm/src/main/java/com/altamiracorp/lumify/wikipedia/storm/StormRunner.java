@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia;
+package com.altamiracorp.lumify.wikipedia.storm;
 
 import backtype.storm.Config;
 import backtype.storm.generated.StormTopology;
@@ -6,6 +6,7 @@ import backtype.storm.topology.TopologyBuilder;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.storm.StormRunnerBase;
+import com.altamiracorp.lumify.wikipedia.WikipediaConstants;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
