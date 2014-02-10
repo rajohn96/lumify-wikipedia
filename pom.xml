@@ -26,6 +26,16 @@
             <version>${lumify.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.altamiracorp.lumify</groupId>
+            <artifactId>lumify-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.altamiracorp.lumify</groupId>
+            <artifactId>lumify-model-bigtable-queue</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${storm.guava.version}</version>
@@ -69,6 +79,22 @@
             <groupId>org.sweble.wikitext</groupId>
             <artifactId>swc-engine</artifactId>
             <version>${sweble.version}</version>
+        </dependency>
+
+        <!-- Required for MR job -->
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+            <version>1.9.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-httpclient</groupId>
+            <artifactId>commons-httpclient</artifactId>
+            <version>3.1</version>
         </dependency>
 
         <dependency>
@@ -137,7 +163,7 @@
             </properties>
         </profile>
 
-        <!-- Builds the Storm Uber-JAR -->
+         <!--Builds the Storm Uber-JAR-->
         <profile>
             <id>storm-jar</id>
             <build>
@@ -150,6 +176,35 @@
                             <archive>
                                 <manifest>
                                     <mainClass>com.altamiracorp.lumify.wikipedia.StormRunner</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>make-assembly</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>hadoop-jar</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <configuration>
+                            <descriptor>src/main/assembly/descriptor.xml</descriptor>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.altamiracorp.lumify.wikipedia.ImportMR</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
