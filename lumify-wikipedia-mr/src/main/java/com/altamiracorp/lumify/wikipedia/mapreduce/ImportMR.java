@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia;
+package com.altamiracorp.lumify.wikipedia.mapreduce;
 
 import com.altamiracorp.bigtable.model.accumulo.AccumuloSession;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
@@ -8,6 +8,8 @@ import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.model.bigtablequeue.BigTableWorkQueueRepository;
 import com.altamiracorp.lumify.model.bigtablequeue.model.QueueItem;
+import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
+import com.altamiracorp.lumify.wikipedia.TextConverter;
 import com.altamiracorp.securegraph.Authorizations;
 import com.altamiracorp.securegraph.Vertex;
 import com.altamiracorp.securegraph.VertexBuilder;
