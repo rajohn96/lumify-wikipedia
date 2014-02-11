@@ -1,26 +1,29 @@
 package com.altamiracorp.lumify.wikipedia.mapreduce;
 
 import com.altamiracorp.bigtable.model.accumulo.AccumuloSession;
+import com.altamiracorp.lumify.core.model.ontology.Concept;
+import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
+import com.altamiracorp.lumify.core.model.ontology.Relationship;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
+import com.altamiracorp.lumify.core.user.DefaultUserProvider;
+import com.altamiracorp.lumify.core.user.UserProvider;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.model.bigtablequeue.BigTableWorkQueueRepository;
 import com.altamiracorp.lumify.model.bigtablequeue.model.QueueItem;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
 import com.altamiracorp.lumify.wikipedia.TextConverter;
-import com.altamiracorp.securegraph.Authorizations;
-import com.altamiracorp.securegraph.Vertex;
-import com.altamiracorp.securegraph.VertexBuilder;
-import com.altamiracorp.securegraph.Visibility;
+import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.accumulo.AccumuloAuthorizations;
+import com.altamiracorp.securegraph.accumulo.AccumuloGraph;
 import com.altamiracorp.securegraph.accumulo.AccumuloGraphConfiguration;
 import com.altamiracorp.securegraph.accumulo.mapreduce.AccumuloElementOutputFormat;
 import com.altamiracorp.securegraph.accumulo.mapreduce.ElementMapper;
 import com.altamiracorp.securegraph.id.IdGenerator;
-import com.altamiracorp.securegraph.id.UUIDIdGenerator;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
+import com.altamiracorp.securegraph.util.MapUtils;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -80,10 +83,11 @@ public class ImportMR extends Configured implements Tool {
         private String wikipediaPageConceptId;
         private String wikipediaPageInternalLinkWikipediaPageRelationshipId;
         private Map configurationMap;
-        private IdGenerator idGenerator;
         private SimpleWikiConfiguration config;
         private Compiler compiler;
         private String highlightWorkQueueTableName;
+        private AccumuloGraph graph;
+        private OntologyRepository ontologyRepository;
 
         public ImportMRMapper() {
             this.textXPath = XPathFactory.instance().compile(TEXT_XPATH, Filters.text());
@@ -95,27 +99,23 @@ public class ImportMR extends Configured implements Tool {
         protected void setup(Context context) throws IOException, InterruptedException {
             super.setup(context);
             this.configurationMap = toMap(context.getConfiguration());
-            this.idGenerator = new UUIDIdGenerator(this.configurationMap); // TODO make configurable
-//            com.altamiracorp.lumify.core.config.Configuration lumifyConfig = new com.altamiracorp.lumify.core.config.Configuration(configurationMap);
-//            System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
-//            System.out.println("fs.provider=============" + lumifyConfig.get("fs.provider"));
-//            InjectHelper.inject(this, LumifyBootstrap.bootstrapModuleMaker(lumifyConfig));
+            this.graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(this.configurationMap, "graph"));
+            UserProvider userProvider = new DefaultUserProvider();
+            this.ontologyRepository = new OntologyRepository(graph, userProvider);
             this.visibility = new Visibility("");
             this.authorizations = new AccumuloAuthorizations();
 
-//            Concept wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
-//            if (wikipediaPageConcept == null) {
-//                throw new RuntimeException("wikipediaPage concept not found");
-//            }
-            //this.wikipediaPageConceptId = wikipediaPageConcept.getId();
-            this.wikipediaPageConceptId = "7006e296e4e7463dab9c0f4130196022";
+            Concept wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
+            if (wikipediaPageConcept == null) {
+                throw new RuntimeException("wikipediaPage concept not found");
+            }
+            this.wikipediaPageConceptId = wikipediaPageConcept.getId();
 
-//            Concept wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
-//            if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
-//                throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
-//            }
-            //this.wikipediaPageInternalLinkWikipediaPageRelationshipId = wikipediaPageInternalLinkWikipediaPageRelationship.getId();
-            this.wikipediaPageInternalLinkWikipediaPageRelationshipId = "bd78f3476d4840f88c32bf4a321c242d";
+            Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
+            if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
+                throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
+            }
+            this.wikipediaPageInternalLinkWikipediaPageRelationshipId = wikipediaPageInternalLinkWikipediaPageRelationship.getId();
 
             String tablePrefix = BigTableWorkQueueRepository.getTablePrefix(configurationMap);
             this.highlightWorkQueueTableName = BigTableWorkQueueRepository.getTableName(tablePrefix, WorkQueueRepository.ARTIFACT_HIGHLIGHT_QUEUE_NAME);
@@ -130,7 +130,7 @@ public class ImportMR extends Configured implements Tool {
 
         @Override
         protected IdGenerator getIdGenerator() {
-            return this.idGenerator;
+            return this.graph.getIdGenerator();
         }
 
         protected static Map toMap(Configuration configuration) {
