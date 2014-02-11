@@ -164,6 +164,7 @@ public class ImportMR extends Configured implements Tool {
             }
 
             String wikipediaPageVertexId = getWikipediaPageVertexId(pageTitle);
+            context.setStatus(wikipediaPageVertexId);
 
             TextConverter textConverter;
             try {
