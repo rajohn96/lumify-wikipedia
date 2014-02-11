@@ -85,7 +85,7 @@
         </profile>
 
         <profile>
-            <id>hadoop-jar</id>
+            <id>uber-jar</id>
             <build>
                 <plugins>
                     <plugin>
