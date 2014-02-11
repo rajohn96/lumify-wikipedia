@@ -146,7 +146,7 @@ public class ImportMR extends Configured implements Tool {
             String wikitext;
             String pageTitle;
             Date revisionTimestamp = null;
-            String pageString = line.toString().replaceAll("\\n", "\n");
+            String pageString = line.toString().replaceAll("\\\\n", "\n");
             try {
                 SAXBuilder builder = new SAXBuilder();
                 Document doc = builder.build(new ByteArrayInputStream(pageString.getBytes()));
