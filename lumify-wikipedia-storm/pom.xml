@@ -95,7 +95,7 @@
 
         <!--Builds the Storm Uber-JAR-->
         <profile>
-            <id>storm-jar</id>
+            <id>uber-jar</id>
             <build>
                 <plugins>
                     <plugin>
