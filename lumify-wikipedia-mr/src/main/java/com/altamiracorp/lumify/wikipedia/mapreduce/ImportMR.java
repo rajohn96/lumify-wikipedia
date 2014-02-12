@@ -13,6 +13,7 @@ import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.model.bigtablequeue.BigTableWorkQueueRepository;
 import com.altamiracorp.lumify.model.bigtablequeue.model.QueueItem;
+import com.altamiracorp.lumify.model.bigtablequeue.model.QueueItemRowKey;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
 import com.altamiracorp.lumify.wikipedia.TextConverter;
 import com.altamiracorp.securegraph.*;
@@ -295,8 +296,8 @@ public class ImportMR extends Configured implements Tool {
         splits.addAll(getSplits(graph, graph.getVerticesTableName()));
         splits.addAll(getSplits(graph, graph.getEdgesTableName()));
         splits.addAll(getSplits(graph, graph.getDataTableName()));
-        splits.addAll(getSplits(graph, highlightWorkQueueTableName));
         splits.addAll(getSplits(graph, TermMentionModel.TABLE_NAME));
+        splits.addAll(getHighlightWorkQueueSplits(highlightWorkQueueTableName));
         Collections.sort(splits);
 
         Path splitFile = new Path("/tmp/wikipediaImport_splits.txt");
@@ -330,6 +331,16 @@ public class ImportMR extends Configured implements Tool {
         job.setNumReduceTasks(splits.size() + 1);
         FileInputFormat.addInputPath(job, new Path(conf.get("in")));
         return job.waitForCompletion(true) ? 0 : 1;
+    }
+
+    private Collection<Text> getHighlightWorkQueueSplits(String highlightWorkQueueTableName) {
+        ArrayList<Text> splits = new ArrayList<Text>();
+        long minute = 60L * 60L * 1000L * 1000L;
+        for (long i = 0; i < 4 * 60 * minute; i += 10 * minute) {
+            byte[] key = new QueueItemRowKey(System.nanoTime() + i).toString().getBytes();
+            splits.add(getKey(highlightWorkQueueTableName, key));
+        }
+        return splits;
     }
 
     private Collection<Text> getSplits(AccumuloGraph graph, String tableName) throws TableNotFoundException, AccumuloSecurityException, AccumuloException {
