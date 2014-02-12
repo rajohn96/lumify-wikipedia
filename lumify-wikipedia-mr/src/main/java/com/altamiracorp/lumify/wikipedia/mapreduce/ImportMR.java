@@ -119,6 +119,13 @@ public class ImportMR extends Configured implements Tool {
 
             String tablePrefix = BigTableWorkQueueRepository.getTablePrefix(configurationMap);
             this.highlightWorkQueueTableName = BigTableWorkQueueRepository.getTableName(tablePrefix, WorkQueueRepository.ARTIFACT_HIGHLIGHT_QUEUE_NAME);
+            try {
+                if (!this.graph.getConnector().tableOperations().exists(this.highlightWorkQueueTableName)) {
+                    this.graph.getConnector().tableOperations().create(this.highlightWorkQueueTableName);
+                }
+            } catch (Exception ex) {
+                throw new IOException("Could not create table: " + this.highlightWorkQueueTableName, ex);
+            }
 
             try {
                 config = new SimpleWikiConfiguration("classpath:/org/sweble/wikitext/engine/SimpleWikiConfiguration.xml");
@@ -131,14 +138,6 @@ public class ImportMR extends Configured implements Tool {
         @Override
         protected IdGenerator getIdGenerator() {
             return this.graph.getIdGenerator();
-        }
-
-        protected static Map toMap(Configuration configuration) {
-            Map map = new HashMap();
-            for (Map.Entry<String, String> entry : configuration) {
-                map.put(entry.getKey(), entry.getValue());
-            }
-            return map;
         }
 
         @Override
@@ -289,5 +288,13 @@ public class ImportMR extends Configured implements Tool {
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new ImportMR(), args);
         System.exit(res);
+    }
+
+    protected static Map toMap(Configuration configuration) {
+        Map map = new HashMap();
+        for (Map.Entry<String, String> entry : configuration) {
+            map.put(entry.getKey(), entry.getValue());
+        }
+        return map;
     }
 }
