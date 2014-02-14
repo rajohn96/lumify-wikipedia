@@ -225,7 +225,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH, getUser().getModelUserContext());
         }
 
-        this.workQueueRepository.pushArtifactHighlight(pageVertex.getId().toString(), FlushFlag.NO_FLUSH);
+        this.workQueueRepository.pushTextHighlight(pageVertex.getId().toString(), FlushFlag.NO_FLUSH);
 
         if (flushAfterEachRecord) {
             this.termMentionRepository.flush();

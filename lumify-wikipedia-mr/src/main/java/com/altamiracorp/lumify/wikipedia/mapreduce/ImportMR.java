@@ -378,7 +378,7 @@ public class ImportMR extends Configured implements Tool {
 
     private String getHighlightWorkQueueTableName(Map configurationMap, AccumuloGraph graph) throws IOException {
         String tablePrefix = BigTableWorkQueueRepository.getTablePrefix(configurationMap);
-        String highlightWorkQueueTableName = BigTableWorkQueueRepository.getTableName(tablePrefix, WorkQueueRepository.ARTIFACT_HIGHLIGHT_QUEUE_NAME);
+        String highlightWorkQueueTableName = BigTableWorkQueueRepository.getTableName(tablePrefix, WorkQueueRepository.TEXT_HIGHLIGHT_QUEUE_NAME);
         try {
             if (!graph.getConnector().tableOperations().exists(highlightWorkQueueTableName)) {
                 graph.getConnector().tableOperations().create(highlightWorkQueueTableName);
