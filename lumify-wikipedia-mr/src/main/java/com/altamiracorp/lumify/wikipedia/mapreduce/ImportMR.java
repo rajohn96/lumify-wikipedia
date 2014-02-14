@@ -292,22 +292,6 @@ public class ImportMR extends Configured implements Tool {
         String wikipediaPageInternalLinkWikipediaPageRelationshipId = getWikipediaPageInternalLinkWikipediaPageRelationshipId(ontologyRepository);
         conf.set(CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID, wikipediaPageInternalLinkWikipediaPageRelationshipId);
 
-        List<Text> splits = new ArrayList<Text>();
-        splits.addAll(getSplits(graph, graph.getVerticesTableName()));
-        splits.addAll(getSplits(graph, graph.getEdgesTableName()));
-        splits.addAll(getSplits(graph, graph.getDataTableName()));
-        splits.addAll(getSplits(graph, TermMentionModel.TABLE_NAME));
-        splits.addAll(getHighlightWorkQueueSplits(highlightWorkQueueTableName));
-        Collections.sort(splits);
-
-        Path splitFile = new Path("/tmp/wikipediaImport_splits.txt");
-        FileSystem fs = FileSystem.get(conf);
-        PrintStream out = new PrintStream(new BufferedOutputStream(fs.create(splitFile)));
-        for (Text split : splits) {
-            out.println(new String(Base64.encodeBase64(TextUtil.getBytes(split))));
-        }
-        out.close();
-
         Job job = new Job(conf, "wikipediaImport");
 
         String instanceName = accumuloGraphConfiguration.getAccumuloInstanceName();
@@ -319,8 +303,25 @@ public class ImportMR extends Configured implements Tool {
         if (job.getConfiguration().get("mapred.job.tracker").equals("local")) {
             LOGGER.warn("!!!!!! Running in local mode !!!!!!");
         } else {
+            List<Text> splits = new ArrayList<Text>();
+            splits.addAll(getSplits(graph, graph.getVerticesTableName()));
+            splits.addAll(getSplits(graph, graph.getEdgesTableName()));
+            splits.addAll(getSplits(graph, graph.getDataTableName()));
+            splits.addAll(getSplits(graph, TermMentionModel.TABLE_NAME));
+            splits.addAll(getHighlightWorkQueueSplits(highlightWorkQueueTableName));
+            Collections.sort(splits);
+
+            Path splitFile = new Path("/tmp/wikipediaImport_splits.txt");
+            FileSystem fs = FileSystem.get(conf);
+            PrintStream out = new PrintStream(new BufferedOutputStream(fs.create(splitFile)));
+            for (Text split : splits) {
+                out.println(new String(Base64.encodeBase64(TextUtil.getBytes(split))));
+            }
+            out.close();
+
             job.setPartitionerClass(RangePartitioner.class);
             RangePartitioner.setSplitFile(job, splitFile.toString());
+            job.setNumReduceTasks(splits.size() + 1);
         }
 
         job.setJarByClass(ImportMR.class);
@@ -328,7 +329,6 @@ public class ImportMR extends Configured implements Tool {
         job.setReducerClass(ImportMRReducer.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(AccumuloElementOutputFormat.class);
-        job.setNumReduceTasks(splits.size() + 1);
         FileInputFormat.addInputPath(job, new Path(conf.get("in")));
         return job.waitForCompletion(true) ? 0 : 1;
     }
