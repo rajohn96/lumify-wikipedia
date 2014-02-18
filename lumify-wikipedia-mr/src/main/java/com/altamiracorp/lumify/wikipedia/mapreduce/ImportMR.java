@@ -7,8 +7,8 @@ import com.altamiracorp.lumify.core.model.ontology.Relationship;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
-import com.altamiracorp.lumify.core.user.DefaultUserProvider;
-import com.altamiracorp.lumify.core.user.UserProvider;
+import com.altamiracorp.lumify.core.user.AccumuloAuthorizationBuilder;
+import com.altamiracorp.lumify.core.user.AuthorizationBuilder;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.model.bigtablequeue.BigTableWorkQueueRepository;
@@ -280,8 +280,8 @@ public class ImportMR extends Configured implements Tool {
 
         Map configurationMap = toMap(conf);
         AccumuloGraph graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
-        UserProvider userProvider = new DefaultUserProvider();
-        OntologyRepository ontologyRepository = new OntologyRepository(graph, userProvider);
+        AuthorizationBuilder authorizationBuilder = new AccumuloAuthorizationBuilder();
+        OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationBuilder);
 
         String highlightWorkQueueTableName = getHighlightWorkQueueTableName(configurationMap, graph);
         conf.set(CONFIG_HIGHLIGHT_WORK_QUEUE_TABLE_NAME, highlightWorkQueueTableName);

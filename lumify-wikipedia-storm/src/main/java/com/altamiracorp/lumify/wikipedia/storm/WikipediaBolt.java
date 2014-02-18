@@ -148,7 +148,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
         String vertexId = json.getString("vertexId");
         LOGGER.info("processing wikipedia page: " + vertexId);
 
-        Vertex pageVertex = graph.getVertex(vertexId, getUser().getAuthorizations());
+        Vertex pageVertex = graph.getVertex(vertexId, getAuthorizations());
         if (pageVertex == null) {
             throw new RuntimeException("Could not find vertex: " + vertexId);
         }
@@ -203,14 +203,14 @@ public class WikipediaBolt extends BaseLumifyBolt {
 
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
-            VertexBuilder builder = graph.prepareVertex(linkVertexId, visibility, getUser().getAuthorizations());
+            VertexBuilder builder = graph.prepareVertex(linkVertexId, visibility, getAuthorizations());
             CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, visibility);
             MIME_TYPE.setProperty(builder, WIKIPEDIA_MIME_TYPE, visibility);
             SOURCE.setProperty(builder, WIKIPEDIA_SOURCE, visibility);
             TITLE.addPropertyValue(builder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), visibility);
             Vertex linkedPageVertex = builder.save();
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex,
-                    wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getUser().getAuthorizations());
+                    wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getAuthorizations());
             auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex,
                     wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created",
                     getUser());
