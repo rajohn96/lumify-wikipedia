@@ -237,7 +237,7 @@ public class Import extends CommandLineBase {
         StreamingPropertyValue rawPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(pageString.getBytes()), byte[].class);
         rawPropertyValue.store(true);
         rawPropertyValue.searchIndex(false);
-        VertexBuilder builder = graph.prepareVertex(wikipediaPageVertexId, visibility, getUser().getAuthorizations());
+        VertexBuilder builder = graph.prepareVertex(wikipediaPageVertexId, visibility, getAuthorizations());
         CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, visibility);
         RAW.setProperty(builder, rawPropertyValue, visibility);
         TITLE.addPropertyValue(builder, WikipediaBolt.TITLE_MEDIUM_PRIORITY, pageTitle, visibility);
