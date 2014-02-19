@@ -222,7 +222,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
                     .setSign(link.getLink().getTarget())
                     .setVertexId(linkedPageVertex.getId().toString())
                     .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
-            this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH, getUser().getModelUserContext());
+            this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH);
         }
 
         this.workQueueRepository.pushTextHighlight(pageVertex.getId().toString(), FlushFlag.NO_FLUSH);
