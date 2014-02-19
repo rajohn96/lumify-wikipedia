@@ -245,7 +245,7 @@ public class Import extends CommandLineBase {
         SOURCE.setProperty(builder, WikipediaBolt.WIKIPEDIA_SOURCE, visibility);
         Vertex vertex = builder.save();
 
-        this.auditRepository.auditVertex(AuditAction.UPDATE, vertex.getId(), AUDIT_PROCESS_NAME, "Raw set", getUser(), FlushFlag.NO_FLUSH);
+        this.auditRepository.auditVertex(AuditAction.UPDATE, vertex.getId(), AUDIT_PROCESS_NAME, "Raw set", getUser(), FlushFlag.NO_FLUSH, new Visibility(""));
 
         return vertex;
     }
