@@ -1,6 +1,7 @@
 package com.altamiracorp.lumify.wikipedia.mapreduce;
 
 import com.altamiracorp.bigtable.model.accumulo.AccumuloSession;
+import com.altamiracorp.lumify.core.model.lock.LockRepository;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
@@ -8,8 +9,6 @@ import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
-import com.altamiracorp.lumify.core.user.AccumuloAuthorizationBuilder;
-import com.altamiracorp.lumify.core.user.AuthorizationBuilder;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.model.bigtablequeue.BigTableWorkQueueRepository;
@@ -26,6 +25,9 @@ import com.altamiracorp.securegraph.accumulo.mapreduce.ElementMapper;
 import com.altamiracorp.securegraph.id.IdGenerator;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.altamiracorp.securegraph.util.MapUtils;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.retry.ExponentialBackoffRetry;
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.TableNotFoundException;
@@ -281,9 +283,13 @@ public class ImportMR extends Configured implements Tool {
 
         Map configurationMap = toMap(conf);
         AccumuloGraph graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
-        AuthorizationBuilder authorizationBuilder = new AccumuloAuthorizationBuilder();
-        AuthorizationRepository authorizationRepository = new AuthorizationRepository(graph);
-        OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationBuilder, authorizationRepository);
+        ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
+        String zookeeperConnectionString = conf.get(com.altamiracorp.lumify.core.config.Configuration.ZK_SERVERS);
+        CuratorFramework curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
+        curatorFramework.start();
+        LockRepository lockRepository = new LockRepository(curatorFramework);
+        AuthorizationRepository authorizationRepository = new AuthorizationRepository(graph, lockRepository);
+        OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationRepository);
 
         String highlightWorkQueueTableName = getHighlightWorkQueueTableName(configurationMap, graph);
         conf.set(CONFIG_HIGHLIGHT_WORK_QUEUE_TABLE_NAME, highlightWorkQueueTableName);
