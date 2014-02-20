@@ -7,6 +7,7 @@ import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
+import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
@@ -288,7 +289,7 @@ public class ImportMR extends Configured implements Tool {
         CuratorFramework curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
         curatorFramework.start();
         LockRepository lockRepository = new LockRepository(curatorFramework);
-        AuthorizationRepository authorizationRepository = new AuthorizationRepository(graph, lockRepository);
+        AuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository(graph, lockRepository);
         OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationRepository);
 
         String highlightWorkQueueTableName = getHighlightWorkQueueTableName(configurationMap, graph);
