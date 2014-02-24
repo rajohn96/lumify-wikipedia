@@ -30,3 +30,15 @@
 1. Wait for the MR job to complete
 
 1. Run the open source Storm topology to perform text highlighting (and index the data in Elastic Search)
+
+## Running inside an IDE
+
+1. Run format
+
+1. Import the dev.owl
+
+1. Import the wikipedia.owl
+
+1. Run `com.altamiracorp.lumify.wikipedia.mapreduce.ImportMR enwiki-20140102-pages-articles-lines-10.xml`
+
+1. Run the public storm topology.
