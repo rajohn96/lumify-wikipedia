@@ -9,12 +9,8 @@ import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
 import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
-import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.lumify.model.bigtablequeue.BigTableWorkQueueRepository;
-import com.altamiracorp.lumify.model.bigtablequeue.model.QueueItem;
-import com.altamiracorp.lumify.model.bigtablequeue.model.QueueItemRowKey;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
 import com.altamiracorp.lumify.wikipedia.TextConverter;
 import com.altamiracorp.securegraph.*;
@@ -84,7 +80,6 @@ public class ImportMR extends Configured implements Tool {
     public static final String WIKIPEDIA_PAGE_CONCEPT_NAME = "wikipediaPage";
     public static final String CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID = "wikipediaPageConceptId";
     public static final String CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID = "wikipediaPageInternalLinkWikipediaPageRelationshipId";
-    public static final String CONFIG_HIGHLIGHT_WORK_QUEUE_TABLE_NAME = "highlightWorkQueueTableName";
     public static final char KEY_SPLIT = '\u001f';
 
     public static class ImportMRMapper extends ElementMapper<LongWritable, Text> {
@@ -103,7 +98,6 @@ public class ImportMR extends Configured implements Tool {
         private Map configurationMap;
         private SimpleWikiConfiguration config;
         private Compiler compiler;
-        private String highlightWorkQueueTableName;
         private AccumuloGraph graph;
 
         public ImportMRMapper() {
@@ -121,7 +115,6 @@ public class ImportMR extends Configured implements Tool {
             this.authorizations = new AccumuloAuthorizations();
             this.wikipediaPageConceptId = context.getConfiguration().get(CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID);
             this.wikipediaPageInternalLinkWikipediaPageRelationshipId = context.getConfiguration().get(CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID);
-            this.highlightWorkQueueTableName = context.getConfiguration().get(CONFIG_HIGHLIGHT_WORK_QUEUE_TABLE_NAME);
 
             try {
                 config = new SimpleWikiConfiguration("classpath:/org/sweble/wikitext/engine/SimpleWikiConfiguration.xml");
@@ -219,9 +212,6 @@ public class ImportMR extends Configured implements Tool {
                         .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
                 context.write(getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(termMention));
             }
-
-            QueueItem workQueueItem = BigTableWorkQueueRepository.createVertexIdQueueItem(highlightWorkQueueTableName, pageVertex.getId());
-            context.write(getKey(highlightWorkQueueTableName, workQueueItem.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(workQueueItem));
         }
 
         private String textToString(org.jdom2.Text text) {
@@ -292,9 +282,6 @@ public class ImportMR extends Configured implements Tool {
         AuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository(graph, lockRepository);
         OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationRepository);
 
-        String highlightWorkQueueTableName = getHighlightWorkQueueTableName(configurationMap, graph);
-        conf.set(CONFIG_HIGHLIGHT_WORK_QUEUE_TABLE_NAME, highlightWorkQueueTableName);
-
         String wikipediaPageConceptId = getWikipediaPageConceptId(ontologyRepository);
         conf.set(CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID, wikipediaPageConceptId);
 
@@ -317,7 +304,6 @@ public class ImportMR extends Configured implements Tool {
             splits.addAll(getSplits(graph, graph.getEdgesTableName()));
             splits.addAll(getSplits(graph, graph.getDataTableName()));
             splits.addAll(getSplits(graph, TermMentionModel.TABLE_NAME));
-            splits.addAll(getHighlightWorkQueueSplits(highlightWorkQueueTableName));
             Collections.sort(splits);
 
             Path splitFile = new Path("/tmp/wikipediaImport_splits.txt");
@@ -340,16 +326,6 @@ public class ImportMR extends Configured implements Tool {
         job.setOutputFormatClass(AccumuloElementOutputFormat.class);
         FileInputFormat.addInputPath(job, new Path(conf.get("in")));
         return job.waitForCompletion(true) ? 0 : 1;
-    }
-
-    private Collection<Text> getHighlightWorkQueueSplits(String highlightWorkQueueTableName) {
-        ArrayList<Text> splits = new ArrayList<Text>();
-        long minute = 60L * 60L * 1000L * 1000L;
-        for (long i = 0; i < 4 * 60 * minute; i += 10 * minute) {
-            byte[] key = new QueueItemRowKey(System.nanoTime() + i).toString().getBytes();
-            splits.add(getKey(highlightWorkQueueTableName, key));
-        }
-        return splits;
     }
 
     private Collection<Text> getSplits(AccumuloGraph graph, String tableName) throws TableNotFoundException, AccumuloSecurityException, AccumuloException {
@@ -383,19 +359,6 @@ public class ImportMR extends Configured implements Tool {
             throw new RuntimeException("wikipediaPage concept not found");
         }
         return wikipediaPageConcept.getId();
-    }
-
-    private String getHighlightWorkQueueTableName(Map configurationMap, AccumuloGraph graph) throws IOException {
-        String tablePrefix = BigTableWorkQueueRepository.getTablePrefix(configurationMap);
-        String highlightWorkQueueTableName = BigTableWorkQueueRepository.getTableName(tablePrefix, WorkQueueRepository.TEXT_HIGHLIGHT_QUEUE_NAME);
-        try {
-            if (!graph.getConnector().tableOperations().exists(highlightWorkQueueTableName)) {
-                graph.getConnector().tableOperations().create(highlightWorkQueueTableName);
-            }
-        } catch (Exception ex) {
-            throw new IOException("Could not create table: " + highlightWorkQueueTableName, ex);
-        }
-        return highlightWorkQueueTableName;
     }
 
     private Configuration getConfiguration(String[] args, com.altamiracorp.lumify.core.config.Configuration lumifyConfig) {
