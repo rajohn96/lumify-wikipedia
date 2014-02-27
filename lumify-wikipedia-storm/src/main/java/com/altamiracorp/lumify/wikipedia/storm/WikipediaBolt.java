@@ -10,7 +10,6 @@ import com.altamiracorp.lumify.core.model.ontology.Relationship;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRepository;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
-import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.storm.BaseLumifyBolt;
@@ -88,11 +87,9 @@ public class WikipediaBolt extends BaseLumifyBolt {
 
     private Graph graph;
     private TermMentionRepository termMentionRepository;
-    private WorkQueueRepository workQueueRepository;
     private Compiler compiler;
     private SimpleWikiConfiguration config;
     private Visibility visibility;
-    private Concept wikipediaPageConcept;
     private Relationship wikipediaPageInternalLinkWikipediaPageRelationship;
     private XPathExpression<org.jdom2.Text> textXPath;
     private XPathExpression<org.jdom2.Text> titleXPath;
@@ -118,7 +115,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             revisionTimestampXPath = XPathFactory.instance().compile(REVISION_TIMESTAMP_XPATH, Filters.text());
 
             LOGGER.info("Getting ontology concepts");
-            wikipediaPageConcept = ontologyRepository.getConceptByName(WIKIPEDIA_PAGE_CONCEPT_NAME);
+            Concept wikipediaPageConcept = ontologyRepository.getConceptByName(WIKIPEDIA_PAGE_CONCEPT_NAME);
             if (wikipediaPageConcept == null) {
                 throw new RuntimeException("wikipediaPage concept not found");
             }
@@ -210,7 +207,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             TITLE.addPropertyValue(builder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), visibility);
             Vertex linkedPageVertex = builder.save();
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex,
-                    wikipediaPageInternalLinkWikipediaPageRelationship.getId().toString(), visibility, getAuthorizations());
+                    wikipediaPageInternalLinkWikipediaPageRelationship.getId(), visibility, getAuthorizations());
             auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex,
                     wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created",
                     getUser(), new Visibility(""));
@@ -224,8 +221,6 @@ public class WikipediaBolt extends BaseLumifyBolt {
                     .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
             this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH);
         }
-
-        this.workQueueRepository.pushTextHighlight(pageVertex.getId().toString(), FlushFlag.NO_FLUSH);
 
         if (flushAfterEachRecord) {
             this.termMentionRepository.flush();
@@ -248,11 +243,6 @@ public class WikipediaBolt extends BaseLumifyBolt {
     @Inject
     public void setTermMentionRepository(TermMentionRepository termMentionRepository) {
         this.termMentionRepository = termMentionRepository;
-    }
-
-    @Inject
-    public void setWorkQueueRepository(WorkQueueRepository workQueueRepository) {
-        this.workQueueRepository = workQueueRepository;
     }
 
     private static String getWikipediaPageToPageEdgeId(Vertex pageVertex, Vertex linkedPageVertex) {
