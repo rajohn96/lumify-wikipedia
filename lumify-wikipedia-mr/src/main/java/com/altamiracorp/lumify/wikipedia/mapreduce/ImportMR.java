@@ -206,10 +206,10 @@ public class ImportMR extends Configured implements Tool {
                 TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
                         link.getEndOffset()));
                 termMention.getMetadata()
-                        .setConceptGraphVertexId(wikipediaPageConceptId)
-                        .setSign(link.getLink().getTarget())
-                        .setVertexId(linkedPageVertex.getId().toString())
-                        .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
+                        .setConceptGraphVertexId(wikipediaPageConceptId, visibility)
+                        .setSign(link.getLink().getTarget(), visibility)
+                        .setVertexId(linkedPageVertex.getId().toString(), visibility)
+                        .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
                 context.write(getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(termMention));
             }
         }

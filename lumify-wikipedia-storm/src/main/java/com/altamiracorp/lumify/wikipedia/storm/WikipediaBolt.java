@@ -196,7 +196,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
         TEXT.setProperty(m, textPropertyValue, visibility);
         m.save();
 
-        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH, new Visibility(""));
+        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH, visibility);
 
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
@@ -215,10 +215,10 @@ public class WikipediaBolt extends BaseLumifyBolt {
             TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
                     link.getEndOffset()));
             termMention.getMetadata()
-                    .setConceptGraphVertexId(wikipediaPageConceptId)
-                    .setSign(link.getLink().getTarget())
-                    .setVertexId(linkedPageVertex.getId().toString())
-                    .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME);
+                    .setConceptGraphVertexId(wikipediaPageConceptId, visibility)
+                    .setSign(link.getLink().getTarget(), visibility)
+                    .setVertexId(linkedPageVertex.getId().toString(), visibility)
+                    .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
             this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH);
         }
 
