@@ -9,6 +9,7 @@ import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
 import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
+import com.altamiracorp.lumify.core.security.LumifyVisibility;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
@@ -91,7 +92,7 @@ public class ImportMR extends Configured implements Tool {
         private XPathExpression<org.jdom2.Text> textXPath;
         private XPathExpression<org.jdom2.Text> titleXPath;
         private XPathExpression<org.jdom2.Text> revisionTimestampXPath;
-        private Visibility visibility;
+        private LumifyVisibility lumifyVisibility;
         private Authorizations authorizations;
         private String wikipediaPageConceptId;
         private String wikipediaPageInternalLinkWikipediaPageRelationshipId;
@@ -111,7 +112,7 @@ public class ImportMR extends Configured implements Tool {
             super.setup(context);
             this.configurationMap = toMap(context.getConfiguration());
             this.graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(this.configurationMap, "graph"));
-            this.visibility = new Visibility("");
+            this.lumifyVisibility = new LumifyVisibility();
             this.authorizations = new AccumuloAuthorizations();
             this.wikipediaPageConceptId = context.getConfiguration().get(CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID);
             this.wikipediaPageInternalLinkWikipediaPageRelationshipId = context.getConfiguration().get(CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID);
@@ -175,41 +176,41 @@ public class ImportMR extends Configured implements Tool {
 
             StreamingPropertyValue textPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(wikitext.getBytes()), String.class);
 
-            VertexBuilder pageVertexBuilder = prepareVertex(wikipediaPageVertexId, visibility, authorizations);
-            CONCEPT_TYPE.setProperty(pageVertexBuilder, wikipediaPageConceptId, visibility);
-            RAW.setProperty(pageVertexBuilder, rawPropertyValue, visibility);
-            TITLE.addPropertyValue(pageVertexBuilder, TITLE_HIGH_PRIORITY, pageTitle, visibility);
-            MIME_TYPE.setProperty(pageVertexBuilder, WIKIPEDIA_MIME_TYPE, visibility);
-            SOURCE.setProperty(pageVertexBuilder, WIKIPEDIA_SOURCE, visibility);
+            VertexBuilder pageVertexBuilder = prepareVertex(wikipediaPageVertexId, lumifyVisibility.getVisibility(), authorizations);
+            CONCEPT_TYPE.setProperty(pageVertexBuilder, wikipediaPageConceptId, lumifyVisibility.getVisibility());
+            RAW.setProperty(pageVertexBuilder, rawPropertyValue, lumifyVisibility.getVisibility());
+            TITLE.addPropertyValue(pageVertexBuilder, TITLE_HIGH_PRIORITY, pageTitle, lumifyVisibility.getVisibility());
+            MIME_TYPE.setProperty(pageVertexBuilder, WIKIPEDIA_MIME_TYPE, lumifyVisibility.getVisibility());
+            SOURCE.setProperty(pageVertexBuilder, WIKIPEDIA_SOURCE, lumifyVisibility.getVisibility());
             if (revisionTimestamp != null) {
-                PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
+                PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, lumifyVisibility.getVisibility());
             }
-            TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
+            TEXT.setProperty(pageVertexBuilder, textPropertyValue, lumifyVisibility.getVisibility());
             Vertex pageVertex = pageVertexBuilder.save();
 
             for (InternalLinkWithOffsets link : textConverter.getInternalLinks()) {
                 String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
-                VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility, authorizations);
-                CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, wikipediaPageConceptId, visibility);
-                MIME_TYPE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_MIME_TYPE, visibility);
-                SOURCE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_SOURCE, visibility);
-                TITLE.addPropertyValue(linkedPageVertexBuilder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), visibility);
+                VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, lumifyVisibility.getVisibility(), authorizations);
+                CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, wikipediaPageConceptId, lumifyVisibility.getVisibility());
+                MIME_TYPE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_MIME_TYPE, lumifyVisibility.getVisibility());
+                SOURCE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_SOURCE, lumifyVisibility.getVisibility());
+                TITLE.addPropertyValue(linkedPageVertexBuilder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), lumifyVisibility.getVisibility());
                 Vertex linkedPageVertex = linkedPageVertexBuilder.save();
                 addEdge(
                         getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
                         pageVertex,
                         linkedPageVertex,
                         wikipediaPageInternalLinkWikipediaPageRelationshipId,
-                        visibility,
+                        lumifyVisibility.getVisibility(),
                         authorizations);
 
                 TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
                         link.getEndOffset()));
                 termMention.getMetadata()
-                        .setConceptGraphVertexId(wikipediaPageConceptId, visibility)
-                        .setSign(link.getLink().getTarget(), visibility)
-                        .setVertexId(linkedPageVertex.getId().toString(), visibility)
-                        .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
+                        .setConceptGraphVertexId(wikipediaPageConceptId, lumifyVisibility.getVisibility())
+                        .setSign(link.getLink().getTarget(), lumifyVisibility.getVisibility())
+                        .setVertexId(linkedPageVertex.getId().toString(), lumifyVisibility.getVisibility())
+                        .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, lumifyVisibility.getVisibility());
                 context.write(getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(termMention));
             }
         }

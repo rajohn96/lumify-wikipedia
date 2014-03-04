@@ -10,6 +10,7 @@ import com.altamiracorp.lumify.core.model.ontology.Relationship;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRepository;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
+import com.altamiracorp.lumify.core.security.LumifyVisibility;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.storm.BaseLumifyBolt;
@@ -89,7 +90,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
     private TermMentionRepository termMentionRepository;
     private Compiler compiler;
     private SimpleWikiConfiguration config;
-    private Visibility visibility;
+    private LumifyVisibility lumifyVisibility;
     private Relationship wikipediaPageInternalLinkWikipediaPageRelationship;
     private XPathExpression<org.jdom2.Text> textXPath;
     private XPathExpression<org.jdom2.Text> titleXPath;
@@ -108,7 +109,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             LOGGER.info("Create sweble compiler");
             config = new SimpleWikiConfiguration("classpath:/org/sweble/wikitext/engine/SimpleWikiConfiguration.xml");
             compiler = new Compiler(config);
-            visibility = new Visibility("");
+            lumifyVisibility = new LumifyVisibility();
 
             textXPath = XPathFactory.instance().compile(TEXT_XPATH, Filters.text());
             titleXPath = XPathFactory.instance().compile(TITLE_XPATH, Filters.text());
@@ -188,26 +189,26 @@ public class WikipediaBolt extends BaseLumifyBolt {
 
         ElementMutation<Vertex> m = pageVertex.prepareMutation();
         if (title != null && !title.trim().isEmpty()) {
-            TITLE.addPropertyValue(m, TITLE_HIGH_PRIORITY, title, visibility);
+            TITLE.addPropertyValue(m, TITLE_HIGH_PRIORITY, title, lumifyVisibility.getVisibility());
         }
         if (revisionTimestamp != null) {
-            PUBLISHED_DATE.setProperty(m, revisionTimestamp, visibility);
+            PUBLISHED_DATE.setProperty(m, revisionTimestamp, lumifyVisibility.getVisibility());
         }
-        TEXT.setProperty(m, textPropertyValue, visibility);
+        TEXT.setProperty(m, textPropertyValue, lumifyVisibility.getVisibility());
         m.save();
 
-        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH, visibility);
+        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH, lumifyVisibility.getVisibility());
 
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
-            VertexBuilder builder = graph.prepareVertex(linkVertexId, visibility, getAuthorizations());
-            CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, visibility);
-            MIME_TYPE.setProperty(builder, WIKIPEDIA_MIME_TYPE, visibility);
-            SOURCE.setProperty(builder, WIKIPEDIA_SOURCE, visibility);
-            TITLE.addPropertyValue(builder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), visibility);
+            VertexBuilder builder = graph.prepareVertex(linkVertexId, lumifyVisibility.getVisibility(), getAuthorizations());
+            CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, lumifyVisibility.getVisibility());
+            MIME_TYPE.setProperty(builder, WIKIPEDIA_MIME_TYPE, lumifyVisibility.getVisibility());
+            SOURCE.setProperty(builder, WIKIPEDIA_SOURCE, lumifyVisibility.getVisibility());
+            TITLE.addPropertyValue(builder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), lumifyVisibility.getVisibility());
             Vertex linkedPageVertex = builder.save();
             graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex,
-                    wikipediaPageInternalLinkWikipediaPageRelationship.getId(), visibility, getAuthorizations());
+                    wikipediaPageInternalLinkWikipediaPageRelationship.getId(), lumifyVisibility.getVisibility(), getAuthorizations());
             auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex,
                     wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created",
                     getUser(), new Visibility(""));
@@ -215,10 +216,10 @@ public class WikipediaBolt extends BaseLumifyBolt {
             TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
                     link.getEndOffset()));
             termMention.getMetadata()
-                    .setConceptGraphVertexId(wikipediaPageConceptId, visibility)
-                    .setSign(link.getLink().getTarget(), visibility)
-                    .setVertexId(linkedPageVertex.getId().toString(), visibility)
-                    .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
+                    .setConceptGraphVertexId(wikipediaPageConceptId, lumifyVisibility.getVisibility())
+                    .setSign(link.getLink().getTarget(), lumifyVisibility.getVisibility())
+                    .setVertexId(linkedPageVertex.getId().toString(), lumifyVisibility.getVisibility())
+                    .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, lumifyVisibility.getVisibility());
             this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH);
         }
 

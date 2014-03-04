@@ -7,6 +7,7 @@ import com.altamiracorp.lumify.core.model.audit.AuditRepository;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
 import com.altamiracorp.lumify.core.model.workQueue.WorkQueueRepository;
+import com.altamiracorp.lumify.core.security.LumifyVisibility;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.wikipedia.RandomAccessFileInputStream;
@@ -44,7 +45,7 @@ public class Import extends CommandLineBase {
     private WorkQueueRepository workQueueRepository;
     private OntologyRepository ontologyRepository;
     private AuditRepository auditRepository;
-    private final Visibility visibility = new Visibility("");
+    private final LumifyVisibility lumifyVisibility = new LumifyVisibility();
     private long startLine = 0;
     private Long startOffset = null;
     private int pageCountToImport = Integer.MAX_VALUE;
@@ -237,12 +238,12 @@ public class Import extends CommandLineBase {
         StreamingPropertyValue rawPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(pageString.getBytes()), byte[].class);
         rawPropertyValue.store(true);
         rawPropertyValue.searchIndex(false);
-        VertexBuilder builder = graph.prepareVertex(wikipediaPageVertexId, visibility, getAuthorizations());
-        CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, visibility);
-        RAW.setProperty(builder, rawPropertyValue, visibility);
-        TITLE.addPropertyValue(builder, WikipediaBolt.TITLE_MEDIUM_PRIORITY, pageTitle, visibility);
-        MIME_TYPE.setProperty(builder, WikipediaBolt.WIKIPEDIA_MIME_TYPE, visibility);
-        SOURCE.setProperty(builder, WikipediaBolt.WIKIPEDIA_SOURCE, visibility);
+        VertexBuilder builder = graph.prepareVertex(wikipediaPageVertexId, lumifyVisibility.getVisibility(), getAuthorizations());
+        CONCEPT_TYPE.setProperty(builder, wikipediaPageConceptId, lumifyVisibility.getVisibility());
+        RAW.setProperty(builder, rawPropertyValue, lumifyVisibility.getVisibility());
+        TITLE.addPropertyValue(builder, WikipediaBolt.TITLE_MEDIUM_PRIORITY, pageTitle, lumifyVisibility.getVisibility());
+        MIME_TYPE.setProperty(builder, WikipediaBolt.WIKIPEDIA_MIME_TYPE, lumifyVisibility.getVisibility());
+        SOURCE.setProperty(builder, WikipediaBolt.WIKIPEDIA_SOURCE, lumifyVisibility.getVisibility());
         Vertex vertex = builder.save();
 
         this.auditRepository.auditVertex(AuditAction.UPDATE, vertex.getId(), AUDIT_PROCESS_NAME, "Raw set", getUser(), FlushFlag.NO_FLUSH, new Visibility(""));
