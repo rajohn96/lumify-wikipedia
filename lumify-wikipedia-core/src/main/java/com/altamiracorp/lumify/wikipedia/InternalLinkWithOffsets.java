@@ -2,7 +2,7 @@ package com.altamiracorp.lumify.wikipedia;
 
 import org.sweble.wikitext.lazy.parser.InternalLink;
 
-public class InternalLinkWithOffsets {
+public class InternalLinkWithOffsets implements LinkWithOffsets {
     private final InternalLink link;
     private final int startOffset;
     private final int endOffset;
