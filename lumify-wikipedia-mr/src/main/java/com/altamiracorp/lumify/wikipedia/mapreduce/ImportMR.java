@@ -188,12 +188,13 @@ public class ImportMR extends Configured implements Tool {
             Vertex pageVertex = pageVertexBuilder.save();
 
             for (InternalLinkWithOffsets link : textConverter.getInternalLinks()) {
-                String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
+                String linkTarget = link.getLinkTargetWithoutHash();
+                String linkVertexId = getWikipediaPageVertexId(linkTarget);
                 VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility, authorizations);
                 CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, wikipediaPageConceptId, visibility);
                 MIME_TYPE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_MIME_TYPE, visibility);
                 SOURCE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_SOURCE, visibility);
-                TITLE.addPropertyValue(linkedPageVertexBuilder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), visibility);
+                TITLE.addPropertyValue(linkedPageVertexBuilder, TITLE_LOW_PRIORITY, linkTarget, visibility);
                 Vertex linkedPageVertex = linkedPageVertexBuilder.save();
                 addEdge(
                         getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
@@ -207,7 +208,7 @@ public class ImportMR extends Configured implements Tool {
                         link.getEndOffset()));
                 termMention.getMetadata()
                         .setConceptGraphVertexId(wikipediaPageConceptId, visibility)
-                        .setSign(link.getLink().getTarget(), visibility)
+                        .setSign(linkTarget, visibility)
                         .setVertexId(linkedPageVertex.getId().toString(), visibility)
                         .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
                 context.write(getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(termMention));
