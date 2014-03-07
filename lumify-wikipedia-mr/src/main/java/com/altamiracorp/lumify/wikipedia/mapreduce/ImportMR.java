@@ -12,6 +12,8 @@ import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
+import com.altamiracorp.lumify.wikipedia.LinkWithOffsets;
+import com.altamiracorp.lumify.wikipedia.RedirectWithOffsets;
 import com.altamiracorp.lumify.wikipedia.TextConverter;
 import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.accumulo.AccumuloAuthorizations;
@@ -21,6 +23,8 @@ import com.altamiracorp.securegraph.accumulo.mapreduce.AccumuloElementOutputForm
 import com.altamiracorp.securegraph.accumulo.mapreduce.ElementMapper;
 import com.altamiracorp.securegraph.id.IdGenerator;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
+import com.altamiracorp.securegraph.util.ConvertingIterable;
+import com.altamiracorp.securegraph.util.JoinIterable;
 import com.altamiracorp.securegraph.util.MapUtils;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
@@ -187,7 +191,7 @@ public class ImportMR extends Configured implements Tool {
             TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
             Vertex pageVertex = pageVertexBuilder.save();
 
-            for (InternalLinkWithOffsets link : textConverter.getInternalLinks()) {
+            for (LinkWithOffsets link : getLinks(textConverter)) {
                 String linkTarget = link.getLinkTargetWithoutHash();
                 String linkVertexId = getWikipediaPageVertexId(linkTarget);
                 VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility, authorizations);
@@ -213,6 +217,23 @@ public class ImportMR extends Configured implements Tool {
                         .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
                 context.write(getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(termMention));
             }
+        }
+
+        private Iterable<LinkWithOffsets> getLinks(TextConverter textConverter) {
+            return new JoinIterable<LinkWithOffsets>(
+                    new ConvertingIterable<InternalLinkWithOffsets, LinkWithOffsets>(textConverter.getInternalLinks()) {
+                        @Override
+                        protected LinkWithOffsets convert(InternalLinkWithOffsets internalLinkWithOffsets) {
+                            return internalLinkWithOffsets;
+                        }
+                    },
+                    new ConvertingIterable<RedirectWithOffsets, LinkWithOffsets>(textConverter.getRedirects()) {
+                        @Override
+                        protected LinkWithOffsets convert(RedirectWithOffsets redirectWithOffsets) {
+                            return redirectWithOffsets;
+                        }
+                    }
+            );
         }
 
         private String textToString(org.jdom2.Text text) {
