@@ -24,4 +24,18 @@ public class InternalLinkWithOffsets {
     public int getEndOffset() {
         return endOffset;
     }
+
+    public String getLinkTargetWithoutHash() {
+        String target = getLink().getTarget();
+        if (target == null) {
+            return null;
+        }
+
+        int hashIndex = target.indexOf('#');
+        if (hashIndex > 0) {
+            target = target.substring(0, hashIndex);
+        }
+
+        return target;
+    }
 }
