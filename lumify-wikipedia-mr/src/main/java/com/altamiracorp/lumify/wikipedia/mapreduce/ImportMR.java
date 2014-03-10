@@ -13,8 +13,13 @@ import com.altamiracorp.lumify.core.security.LumifyVisibility;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
+import com.altamiracorp.lumify.wikipedia.LinkWithOffsets;
+import com.altamiracorp.lumify.wikipedia.RedirectWithOffsets;
 import com.altamiracorp.lumify.wikipedia.TextConverter;
-import com.altamiracorp.securegraph.*;
+import com.altamiracorp.securegraph.Authorizations;
+import com.altamiracorp.securegraph.GraphFactory;
+import com.altamiracorp.securegraph.Vertex;
+import com.altamiracorp.securegraph.VertexBuilder;
 import com.altamiracorp.securegraph.accumulo.AccumuloAuthorizations;
 import com.altamiracorp.securegraph.accumulo.AccumuloGraph;
 import com.altamiracorp.securegraph.accumulo.AccumuloGraphConfiguration;
@@ -22,6 +27,8 @@ import com.altamiracorp.securegraph.accumulo.mapreduce.AccumuloElementOutputForm
 import com.altamiracorp.securegraph.accumulo.mapreduce.ElementMapper;
 import com.altamiracorp.securegraph.id.IdGenerator;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
+import com.altamiracorp.securegraph.util.ConvertingIterable;
+import com.altamiracorp.securegraph.util.JoinIterable;
 import com.altamiracorp.securegraph.util.MapUtils;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
@@ -188,13 +195,14 @@ public class ImportMR extends Configured implements Tool {
             TEXT.setProperty(pageVertexBuilder, textPropertyValue, lumifyVisibility.getVisibility());
             Vertex pageVertex = pageVertexBuilder.save();
 
-            for (InternalLinkWithOffsets link : textConverter.getInternalLinks()) {
-                String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
+            for (LinkWithOffsets link : getLinks(textConverter)) {
+                String linkTarget = link.getLinkTargetWithoutHash();
+                String linkVertexId = getWikipediaPageVertexId(linkTarget);
                 VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, lumifyVisibility.getVisibility(), authorizations);
                 CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, wikipediaPageConceptId, lumifyVisibility.getVisibility());
                 MIME_TYPE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_MIME_TYPE, lumifyVisibility.getVisibility());
                 SOURCE.setProperty(linkedPageVertexBuilder, WIKIPEDIA_SOURCE, lumifyVisibility.getVisibility());
-                TITLE.addPropertyValue(linkedPageVertexBuilder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), lumifyVisibility.getVisibility());
+                TITLE.addPropertyValue(linkedPageVertexBuilder, TITLE_LOW_PRIORITY, linkTarget, lumifyVisibility.getVisibility());
                 Vertex linkedPageVertex = linkedPageVertexBuilder.save();
                 addEdge(
                         getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
@@ -208,11 +216,28 @@ public class ImportMR extends Configured implements Tool {
                         link.getEndOffset()));
                 termMention.getMetadata()
                         .setConceptGraphVertexId(wikipediaPageConceptId, lumifyVisibility.getVisibility())
-                        .setSign(link.getLink().getTarget(), lumifyVisibility.getVisibility())
+                        .setSign(linkTarget, lumifyVisibility.getVisibility())
                         .setVertexId(linkedPageVertex.getId().toString(), lumifyVisibility.getVisibility())
                         .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, lumifyVisibility.getVisibility());
                 context.write(getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes()), AccumuloSession.createMutationFromRow(termMention));
             }
+        }
+
+        private Iterable<LinkWithOffsets> getLinks(TextConverter textConverter) {
+            return new JoinIterable<LinkWithOffsets>(
+                    new ConvertingIterable<InternalLinkWithOffsets, LinkWithOffsets>(textConverter.getInternalLinks()) {
+                        @Override
+                        protected LinkWithOffsets convert(InternalLinkWithOffsets internalLinkWithOffsets) {
+                            return internalLinkWithOffsets;
+                        }
+                    },
+                    new ConvertingIterable<RedirectWithOffsets, LinkWithOffsets>(textConverter.getRedirects()) {
+                        @Override
+                        protected LinkWithOffsets convert(RedirectWithOffsets redirectWithOffsets) {
+                            return redirectWithOffsets;
+                        }
+                    }
+            );
         }
 
         private String textToString(org.jdom2.Text text) {

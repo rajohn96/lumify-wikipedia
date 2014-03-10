@@ -40,6 +40,7 @@ public class TextConverter extends AstVisitor {
 
     private LinkedList<Integer> sections;
     private List<InternalLinkWithOffsets> internalLinks = new ArrayList<InternalLinkWithOffsets>();
+    private List<RedirectWithOffsets> redirects = new ArrayList<RedirectWithOffsets>();
 
     // =========================================================================
 
@@ -70,6 +71,16 @@ public class TextConverter extends AstVisitor {
     }
 
     public void visit(AstNode n) {
+        if (n instanceof Redirect) {
+            write("REDIRECT: ");
+
+            Redirect redirect = (Redirect) n;
+            int startOffset = getCurrentOffset();
+            String target = redirect.getTarget();
+            write(target);
+            int endOffset = getCurrentOffset();
+            redirects.add(new RedirectWithOffsets(redirect, startOffset, endOffset));
+        }
     }
 
     public void visit(NodeList n) {
@@ -336,6 +347,10 @@ public class TextConverter extends AstVisitor {
 
     public List<InternalLinkWithOffsets> getInternalLinks() {
         return internalLinks;
+    }
+
+    public List<RedirectWithOffsets> getRedirects() {
+        return redirects;
     }
 
     public int getCurrentOffset() {
