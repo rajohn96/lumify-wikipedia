@@ -86,7 +86,7 @@ public class ImportMR extends Configured implements Tool {
     public static final String CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID = "wikipediaPageInternalLinkWikipediaPageRelationshipId";
     public static final char KEY_SPLIT = '\u001f';
 
-    public static class ImportMRMapper extends ElementMapper<LongWritable, Text> {
+    public static class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         public static final String TEXT_XPATH = "/page/revision/text/text()";
         public static final String TITLE_XPATH = "/page/title/text()";
         public static final String REVISION_TIMESTAMP_XPATH = "/page/revision/timestamp/text()";
