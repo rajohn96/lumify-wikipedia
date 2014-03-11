@@ -152,6 +152,8 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
         Vertex pageVertex = pageVertexBuilder.save();
 
+        this.searchIndex.addPropertiesToIndex(pageVertex.getProperties());
+
         String elasticSearchJson = this.searchIndex.createJsonForElement(pageVertex);
         Text key = ImportMR.getKey(ImportMR.TABLE_NAME_ELASTIC_SEARCH, wikipediaPageVertexId.getBytes());
         context.write(key, new MutationOrElasticSearchIndexWritable(wikipediaPageVertexId, elasticSearchJson));
