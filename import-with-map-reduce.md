@@ -18,10 +18,7 @@
 
 1. Pre-split destination Accumulo tables:
 
-        for filename in *.splits; do
-          tablename=$(echo ${filename} | sed -e 's/example_//' -e 's/\.splits//')
-          /usr/lib/accumulo/bin/accumulo shell -u root -p password -e "addsplits -t ${tablename} -sf ${filename}"
-        done
+        bin/configure_splits.sh
 
 1. Submit the MR job:
 
