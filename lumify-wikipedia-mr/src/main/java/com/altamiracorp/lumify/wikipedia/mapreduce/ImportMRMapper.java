@@ -96,6 +96,14 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
 
     @Override
     protected void map(LongWritable filePosition, Text line, Context context) throws IOException, InterruptedException {
+        try {
+            safeMap(filePosition, line, context);
+        } catch (Exception ex) {
+            throw new IOException("Map Failed", ex);
+        }
+    }
+
+    private void safeMap(LongWritable filePosition, Text line, Context context) throws IOException, InterruptedException {
         String wikitext;
         String pageTitle;
         Date revisionTimestamp = null;
