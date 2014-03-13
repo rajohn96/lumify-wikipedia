@@ -100,7 +100,6 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             safeMap(filePosition, line, context);
         } catch (Exception ex) {
             LOGGER.error("failed mapping " + filePosition, ex);
-            throw new IOException("Map Failed", ex);
         }
     }
 
