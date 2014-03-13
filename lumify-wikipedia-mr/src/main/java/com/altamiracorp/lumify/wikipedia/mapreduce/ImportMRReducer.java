@@ -36,6 +36,14 @@ class ImportMRReducer extends Reducer<Text, MutationOrElasticSearchIndexWritable
 
     @Override
     protected void reduce(Text keyText, Iterable<MutationOrElasticSearchIndexWritable> values, Context context) throws IOException, InterruptedException {
+        try {
+            safeReduce(keyText, values, context);
+        } catch (Exception ex) {
+            LOGGER.error("failed reduce", ex);
+        }
+    }
+
+    private void safeReduce(Text keyText, Iterable<MutationOrElasticSearchIndexWritable> values, Context context) throws IOException, InterruptedException {
         String key = keyText.toString();
         context.setStatus(key);
         int keySplitLocation = key.indexOf(ImportMR.KEY_SPLIT);
