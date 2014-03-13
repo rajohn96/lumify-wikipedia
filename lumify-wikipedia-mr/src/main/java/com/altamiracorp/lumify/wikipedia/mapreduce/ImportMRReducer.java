@@ -39,6 +39,7 @@ class ImportMRReducer extends Reducer<Text, MutationOrElasticSearchIndexWritable
         try {
             safeReduce(keyText, values, context);
         } catch (Exception ex) {
+            LOGGER.error("failed reduce", ex);
             throw new IOException("Could not reduce", ex);
         }
     }
