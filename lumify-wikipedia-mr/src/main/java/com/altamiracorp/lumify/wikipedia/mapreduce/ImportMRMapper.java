@@ -162,6 +162,10 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
 
         this.searchIndex.addPropertiesToIndex(pageVertex.getProperties());
 
+        // because save above will cause the StreamingPropertyValue to be read we need to reset the position to 0 for search indexing
+        rawPropertyValue.getInputStream().reset();
+        textPropertyValue.getInputStream().reset();
+
         String elasticSearchJson = this.searchIndex.createJsonForElement(pageVertex);
         Text key = ImportMR.getKey(ImportMR.TABLE_NAME_ELASTIC_SEARCH, wikipediaPageVertexId.getBytes());
         context.write(key, new MutationOrElasticSearchIndexWritable(wikipediaPageVertexId, elasticSearchJson));
