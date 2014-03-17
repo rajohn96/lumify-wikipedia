@@ -2,7 +2,7 @@
 
 1. Build the jar:
 
-    mvn clean package -P uber-jar
+        mvn clean package -P uber-jar
 
 1. Convert the well-formed XML to one XML page element per line:
 
@@ -25,8 +25,6 @@
         hadoop jar lumify-wikipedia-mr-*-jar-with-dependencies.jar /lumify/enwiki-20140102-pages-articles.MR.txt
 
 1. Wait for the MR job to complete
-
-1. Run the open source Storm topology to perform text highlighting (and index the data in Elastic Search)
 
 ## Running inside an IDE
 
