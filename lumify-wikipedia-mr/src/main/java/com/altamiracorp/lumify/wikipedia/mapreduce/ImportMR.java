@@ -175,7 +175,7 @@ public class ImportMR extends Configured implements Tool {
     }
 
     private String getWikipediaPageInternalLinkWikipediaPageRelationshipId(OntologyRepository ontologyRepository) {
-        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
+        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById("wikipediaPageInternalLinkWikipediaPage");
         if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
             throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
         }

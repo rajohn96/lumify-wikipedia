@@ -126,7 +126,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             }
             wikipediaPageConceptId = wikipediaPageConcept.getId();
 
-            wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationship("wikipediaPageInternalLinkWikipediaPage");
+            wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById("wikipediaPageInternalLinkWikipediaPage");
             if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
                 throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
             }
