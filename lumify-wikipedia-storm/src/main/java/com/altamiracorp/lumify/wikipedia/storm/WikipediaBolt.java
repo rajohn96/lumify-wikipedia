@@ -198,7 +198,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
         TEXT.setProperty(m, textPropertyValue, lumifyVisibility.getVisibility());
         m.save();
 
-        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH, false, lumifyVisibility.getVisibility());
+        this.auditRepository.auditVertex(AuditAction.UPDATE, pageVertex.getId(), AUDIT_PROCESS_NAME, "Page processed", getUser(), FlushFlag.NO_FLUSH, lumifyVisibility.getVisibility());
 
         for (InternalLinkWithOffsets link : p.getInternalLinks()) {
             String linkVertexId = getWikipediaPageVertexId(link.getLink().getTarget());
@@ -212,7 +212,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
                     wikipediaPageInternalLinkWikipediaPageRelationship.getId(), lumifyVisibility.getVisibility(), getAuthorizations());
             auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex,
                     edge, AUDIT_PROCESS_NAME, "internal link created",
-                    getUser(), false, new Visibility(""));
+                    getUser(), new Visibility(""));
 
             TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
                     link.getEndOffset()));
