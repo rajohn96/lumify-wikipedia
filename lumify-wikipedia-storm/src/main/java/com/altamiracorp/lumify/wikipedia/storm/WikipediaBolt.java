@@ -120,7 +120,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
             revisionTimestampXPath = XPathFactory.instance().compile(REVISION_TIMESTAMP_XPATH, Filters.text());
 
             LOGGER.info("Getting ontology concepts");
-            Concept wikipediaPageConcept = ontologyRepository.getConceptByName(WIKIPEDIA_PAGE_CONCEPT_NAME);
+            Concept wikipediaPageConcept = ontologyRepository.getConceptById(WIKIPEDIA_PAGE_CONCEPT_NAME);
             if (wikipediaPageConcept == null) {
                 throw new RuntimeException("wikipediaPage concept not found");
             }

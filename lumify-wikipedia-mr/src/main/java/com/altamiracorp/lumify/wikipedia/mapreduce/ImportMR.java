@@ -183,7 +183,7 @@ public class ImportMR extends Configured implements Tool {
     }
 
     private String getWikipediaPageConceptId(OntologyRepository ontologyRepository) {
-        Concept wikipediaPageConcept = ontologyRepository.getConceptByName("wikipediaPage");
+        Concept wikipediaPageConcept = ontologyRepository.getConceptById("wikipediaPage");
         if (wikipediaPageConcept == null) {
             throw new RuntimeException("wikipediaPage concept not found");
         }
