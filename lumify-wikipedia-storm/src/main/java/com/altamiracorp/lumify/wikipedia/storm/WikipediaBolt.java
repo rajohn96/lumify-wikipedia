@@ -17,10 +17,7 @@ import com.altamiracorp.lumify.storm.BaseLumifyBolt;
 import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
 import com.altamiracorp.lumify.wikipedia.TextConverter;
 import com.altamiracorp.lumify.wikipedia.WikipediaConstants;
-import com.altamiracorp.securegraph.Graph;
-import com.altamiracorp.securegraph.Vertex;
-import com.altamiracorp.securegraph.VertexBuilder;
-import com.altamiracorp.securegraph.Visibility;
+import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.mutation.ElementMutation;
 import com.altamiracorp.securegraph.property.StreamingPropertyValue;
 import com.google.inject.Inject;
@@ -211,10 +208,10 @@ public class WikipediaBolt extends BaseLumifyBolt {
             SOURCE.setProperty(builder, WIKIPEDIA_SOURCE, lumifyVisibility.getVisibility());
             TITLE.addPropertyValue(builder, TITLE_LOW_PRIORITY, link.getLink().getTarget(), lumifyVisibility.getVisibility());
             Vertex linkedPageVertex = builder.save();
-            graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex,
+            Edge edge = graph.addEdge(getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex), pageVertex, linkedPageVertex,
                     wikipediaPageInternalLinkWikipediaPageRelationship.getId(), lumifyVisibility.getVisibility(), getAuthorizations());
             auditRepository.auditRelationship(AuditAction.CREATE, pageVertex, linkedPageVertex,
-                    wikipediaPageInternalLinkWikipediaPageRelationship.getDisplayName(), AUDIT_PROCESS_NAME, "internal link created",
+                    edge, AUDIT_PROCESS_NAME, "internal link created",
                     getUser(), new Visibility(""));
 
             TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
