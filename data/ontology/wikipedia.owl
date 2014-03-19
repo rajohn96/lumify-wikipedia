@@ -19,6 +19,7 @@
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
     <owl:Ontology rdf:about="http://lumify.io/wikipedia">
         <owl:imports rdf:resource="http://lumify.io"/>
+        <owl:imports rdf:resource="http://lumify.io/dev"/>
     </owl:Ontology>
     
 
