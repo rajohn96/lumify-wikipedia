@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
-    <uri id="Imports Wizard Entry" name="http://lumify.io/dev" uri="file:/home/jferner/dev/lumify/lumify-all/data/dev-ontology/dev.owl"/>
-    <group id="Folder Repository, directory=, recursive=true, Auto-Update=true, version=2" prefer="public" xml:base="">
-        <uri id="Automatically generated entry, Timestamp=1395170610116" name="http://lumify.io/wikipedia" uri="wikipedia_new.owl"/>
-    </group>
-</catalog>

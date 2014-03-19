@@ -6,3 +6,4 @@ target/
 .classpath
 .DS_Store
 *.swp
+catalog-v001.xml
