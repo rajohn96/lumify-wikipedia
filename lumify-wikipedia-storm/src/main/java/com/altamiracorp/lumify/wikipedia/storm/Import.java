@@ -158,9 +158,9 @@ public class Import extends CommandLineBase {
 
     @Override
     protected int run(CommandLine cmd) throws Exception {
-        wikipediaPageConcept = ontologyRepository.getConceptById("wikipediaPage");
+        wikipediaPageConcept = ontologyRepository.getConceptById(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageConcept == null) {
-            throw new RuntimeException("wikipediaPage concept not found");
+            throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
 
         wikipediaPageConceptId = wikipediaPageConcept.getId();

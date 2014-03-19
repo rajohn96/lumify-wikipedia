@@ -84,7 +84,6 @@ public class WikipediaBolt extends BaseLumifyBolt {
     public static final String WIKIPEDIA_MIME_TYPE = "text/plain";
     public static final String WIKIPEDIA_SOURCE = "Wikipedia";
     public static final SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-    public static final String WIKIPEDIA_PAGE_CONCEPT_NAME = "wikipediaPage";
     private static final String AUDIT_PROCESS_NAME = WikipediaBolt.class.getName();
 
     private Graph graph;
@@ -117,15 +116,15 @@ public class WikipediaBolt extends BaseLumifyBolt {
             revisionTimestampXPath = XPathFactory.instance().compile(REVISION_TIMESTAMP_XPATH, Filters.text());
 
             LOGGER.info("Getting ontology concepts");
-            Concept wikipediaPageConcept = ontologyRepository.getConceptById(WIKIPEDIA_PAGE_CONCEPT_NAME);
+            Concept wikipediaPageConcept = ontologyRepository.getConceptById(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
             if (wikipediaPageConcept == null) {
-                throw new RuntimeException("wikipediaPage concept not found");
+                throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
             }
             wikipediaPageConceptId = wikipediaPageConcept.getId();
 
-            wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById("wikipediaPageInternalLinkWikipediaPage");
+            wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
             if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
-                throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
+                throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
             }
 
             LOGGER.info("prepare complete");
@@ -220,7 +219,7 @@ public class WikipediaBolt extends BaseLumifyBolt {
                     .setConceptGraphVertexId(wikipediaPageConceptId, lumifyVisibility.getVisibility())
                     .setSign(link.getLink().getTarget(), lumifyVisibility.getVisibility())
                     .setVertexId(linkedPageVertex.getId().toString(), lumifyVisibility.getVisibility())
-                    .setOntologyClassUri(WIKIPEDIA_PAGE_CONCEPT_NAME, lumifyVisibility.getVisibility());
+                    .setOntologyClassUri(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, lumifyVisibility.getVisibility());
             this.termMentionRepository.save(termMention, FlushFlag.NO_FLUSH);
         }
 

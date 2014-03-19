@@ -9,6 +9,7 @@ import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
+import com.altamiracorp.lumify.wikipedia.WikipediaConstants;
 import com.altamiracorp.securegraph.GraphFactory;
 import com.altamiracorp.securegraph.Vertex;
 import com.altamiracorp.securegraph.accumulo.AccumuloConstants;
@@ -51,9 +52,6 @@ public class ImportMR extends Configured implements Tool {
     public static final String TITLE_LOW_PRIORITY = "2";
     public static final String WIKIPEDIA_ID_PREFIX = "WIKIPEDIA_";
     public static final String WIKIPEDIA_LINK_ID_PREFIX = "WIKIPEDIA_LINK_";
-    public static final String WIKIPEDIA_PAGE_CONCEPT_NAME = "wikipediaPage";
-    public static final String CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID = "wikipediaPageConceptId";
-    public static final String CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID = "wikipediaPageInternalLinkWikipediaPageRelationshipId";
 
     static final char KEY_SPLIT = '\u001f';
     static final String TABLE_NAME_ELASTIC_SEARCH = "elasticSearch";
@@ -86,11 +84,8 @@ public class ImportMR extends Configured implements Tool {
         AuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository(graph, lockRepository);
         OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationRepository);
 
-        String wikipediaPageConceptId = getWikipediaPageConceptId(ontologyRepository);
-        conf.set(CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID, wikipediaPageConceptId);
-
-        String wikipediaPageInternalLinkWikipediaPageRelationshipId = getWikipediaPageInternalLinkWikipediaPageRelationshipId(ontologyRepository);
-        conf.set(CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID, wikipediaPageInternalLinkWikipediaPageRelationshipId);
+        verifyWikipediaPageConceptId(ontologyRepository);
+        verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(ontologyRepository);
 
         conf.set(ImportMRReducer.MAX_ITEMS_PER_REQUEST, Integer.toString(ImportMRReducer.DEFAULT_MAX_ITEMS_PER_REQUEST));
 
@@ -174,18 +169,18 @@ public class ImportMR extends Configured implements Tool {
         return new Text(tableName + KEY_SPLIT + new String(Base64.encodeBase64(key)));
     }
 
-    private String getWikipediaPageInternalLinkWikipediaPageRelationshipId(OntologyRepository ontologyRepository) {
-        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById("wikipediaPageInternalLinkWikipediaPage");
+    private String verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(OntologyRepository ontologyRepository) {
+        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
-            throw new RuntimeException("wikipediaPageInternalLinkWikipediaPage concept not found");
+            throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
         return wikipediaPageInternalLinkWikipediaPageRelationship.getId();
     }
 
-    private String getWikipediaPageConceptId(OntologyRepository ontologyRepository) {
-        Concept wikipediaPageConcept = ontologyRepository.getConceptById("wikipediaPage");
+    private String verifyWikipediaPageConceptId(OntologyRepository ontologyRepository) {
+        Concept wikipediaPageConcept = ontologyRepository.getConceptById(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageConcept == null) {
-            throw new RuntimeException("wikipediaPage concept not found");
+            throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
         return wikipediaPageConcept.getId();
     }

@@ -5,10 +5,7 @@ import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
 import com.altamiracorp.lumify.core.util.LumifyLogger;
 import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.lumify.wikipedia.InternalLinkWithOffsets;
-import com.altamiracorp.lumify.wikipedia.LinkWithOffsets;
-import com.altamiracorp.lumify.wikipedia.RedirectWithOffsets;
-import com.altamiracorp.lumify.wikipedia.TextConverter;
+import com.altamiracorp.lumify.wikipedia.*;
 import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.accumulo.AccumuloAuthorizations;
 import com.altamiracorp.securegraph.accumulo.AccumuloGraph;
@@ -57,8 +54,6 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
     private XPathExpression<org.jdom2.Text> revisionTimestampXPath;
     private Visibility visibility;
     private Authorizations authorizations;
-    private String wikipediaPageConceptId;
-    private String wikipediaPageInternalLinkWikipediaPageRelationshipId;
     private SimpleWikiConfiguration config;
     private org.sweble.wikitext.engine.Compiler compiler;
     private AccumuloGraph graph;
@@ -77,8 +72,6 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         this.graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
         this.visibility = new Visibility("");
         this.authorizations = new AccumuloAuthorizations();
-        this.wikipediaPageConceptId = context.getConfiguration().get(ImportMR.CONFIG_WIKIPEDIA_PAGE_CONCEPT_ID);
-        this.wikipediaPageInternalLinkWikipediaPageRelationshipId = context.getConfiguration().get(ImportMR.CONFIG_WIKIPEDIA_PAGE_INTERNAL_WIKIPEDIA_PAGE_RELATIONSHIP_ID);
         this.searchIndex = (ElasticSearchSearchIndex) this.graph.getSearchIndex();
 
         try {
@@ -149,7 +142,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         StreamingPropertyValue textPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(wikitext.getBytes()), String.class);
 
         VertexBuilder pageVertexBuilder = prepareVertex(wikipediaPageVertexId, visibility, authorizations);
-        CONCEPT_TYPE.setProperty(pageVertexBuilder, wikipediaPageConceptId, visibility);
+        CONCEPT_TYPE.setProperty(pageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
         RAW.setProperty(pageVertexBuilder, rawPropertyValue, visibility);
         TITLE.addPropertyValue(pageVertexBuilder, ImportMR.TITLE_HIGH_PRIORITY, pageTitle, visibility);
         MIME_TYPE.setProperty(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
@@ -174,7 +167,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             String linkTarget = link.getLinkTargetWithoutHash();
             String linkVertexId = ImportMR.getWikipediaPageVertexId(linkTarget);
             VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility, authorizations);
-            CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, wikipediaPageConceptId, visibility);
+            CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
             MIME_TYPE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
             SOURCE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_SOURCE, visibility);
             TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.TITLE_LOW_PRIORITY, linkTarget, visibility);
@@ -182,17 +175,17 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
                     pageVertex,
                     linkedPageVertex,
-                    wikipediaPageInternalLinkWikipediaPageRelationshipId,
+                    WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI,
                     visibility,
                     authorizations);
 
             TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
                     link.getEndOffset()));
             termMention.getMetadata()
-                    .setConceptGraphVertexId(wikipediaPageConceptId, visibility)
+                    .setConceptGraphVertexId(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility)
                     .setSign(linkTarget, visibility)
                     .setVertexId(linkedPageVertex.getId().toString(), visibility)
-                    .setOntologyClassUri(ImportMR.WIKIPEDIA_PAGE_CONCEPT_NAME, visibility);
+                    .setOntologyClassUri(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
             key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
             Mutation m = AccumuloSession.createMutationFromRow(termMention);
             context.write(key, new MutationOrElasticSearchIndexWritable(m));
