@@ -38,7 +38,7 @@
     <!-- http://lumify.io/wikipedia#wikipediaPageInternalLinkWikipediaPage -->
 
     <owl:ObjectProperty rdf:about="http://lumify.io/wikipedia#wikipediaPageInternalLinkWikipediaPage">
-        <rdfs:comment xml:lang="en">Internal Link</rdfs:comment>
+        <rdfs:label xml:lang="en">Internal Link</rdfs:label>
         <rdfs:range rdf:resource="http://lumify.io/wikipedia#wikipediaPage"/>
         <rdfs:domain rdf:resource="http://lumify.io/wikipedia#wikipediaPage"/>
     </owl:ObjectProperty>
@@ -48,7 +48,7 @@
     <!-- http://lumify.io/wikipedia#wikipediaPageIsAbout -->
 
     <owl:ObjectProperty rdf:about="http://lumify.io/wikipedia#wikipediaPageIsAbout">
-        <rdfs:comment xml:lang="en">Page Is About</rdfs:comment>
+        <rdfs:label xml:lang="en">Page Is About</rdfs:label>
         <rdfs:domain rdf:resource="http://lumify.io/wikipedia#wikipediaPage"/>
         <rdfs:range rdf:resource="&owl;Thing"/>
     </owl:ObjectProperty>
