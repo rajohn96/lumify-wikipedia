@@ -72,6 +72,7 @@
         <rdfs:label xml:lang="en">Wikipedia Page</rdfs:label>
         <rdfs:subClassOf rdf:resource="http://lumify.io/dev#document"/>
         <lumify:glyphIconFileName>wikipediaPage.png</lumify:glyphIconFileName>
+        <lumify:displayType xml:lang="en">document</lumify:displayType>
         <lumify:color>rgb(0, 0, 255)</lumify:color>
     </owl:Class>
 </rdf:RDF>
