@@ -27,7 +27,8 @@ if [ -d ${DIR}/../${dir} ]; then
 
   if [ "${run_mvn}" == 'true' ]; then
     echo 'running maven to calculate the classpath...' >&2
-    mvn_output="$(cd ${DIR}/.. && mvn clean compile -DskipTests)"
+    [ "${MVN_OPTS}" ] && echo "MVN_OPTS is ${MVN_OPTS}" >&2
+    mvn_output="$(cd ${DIR}/.. && mvn clean compile -DskipTests ${MVN_OPTS})"
     mvn_exit=$?
     if [ ${mvn_exit} -ne 0 ]; then
       echo "${mvn_output}"

@@ -8,7 +8,7 @@ while [ -h "$SOURCE" ]; do
 done
 DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 
-classpath=$(${DIR}/classpath.sh .)
+classpath=$(${DIR}/classpath.sh lumify-wikipedia-mr)
 if [ $? -ne 0 ]; then
   echo "${classpath}"
   exit
@@ -19,5 +19,5 @@ java \
 -Dfile.encoding=UTF-8 \
 -Djava.library.path=$LD_LIBRARY_PATH \
 -classpath ${classpath} \
-com.altamiracorp.lumify.wikipedia.Import \
+com.altamiracorp.lumify.wikipedia.mapreduce.ImportMR \
 $*
