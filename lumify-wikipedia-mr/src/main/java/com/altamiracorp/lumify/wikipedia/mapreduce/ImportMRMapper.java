@@ -179,7 +179,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
                     visibility,
                     authorizations);
 
-            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
+            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), "", link.getStartOffset(),
                     link.getEndOffset()));
             termMention.getMetadata()
                     .setConceptGraphVertexId(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility)

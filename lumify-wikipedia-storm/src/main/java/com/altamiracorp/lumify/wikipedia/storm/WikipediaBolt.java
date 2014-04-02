@@ -213,7 +213,8 @@ public class WikipediaBolt extends BaseLumifyBolt {
                     edge, AUDIT_PROCESS_NAME, "internal link created",
                     getUser(), new Visibility(""));
 
-            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), link.getStartOffset(),
+            String propertyKey = "";
+            TermMentionModel termMention = new TermMentionModel(new TermMentionRowKey(pageVertex.getId().toString(), propertyKey, link.getStartOffset(),
                     link.getEndOffset()));
             termMention.getMetadata()
                     .setConceptGraphVertexId(wikipediaPageConceptId, lumifyVisibility.getVisibility())
