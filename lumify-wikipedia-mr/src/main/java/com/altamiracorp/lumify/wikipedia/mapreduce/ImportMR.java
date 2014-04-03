@@ -4,6 +4,7 @@ import com.altamiracorp.lumify.core.model.lock.LockRepository;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
+import com.altamiracorp.lumify.core.model.ontology.SecureGraphOntologyRepository;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
@@ -82,7 +83,7 @@ public class ImportMR extends Configured implements Tool {
         curatorFramework.start();
         LockRepository lockRepository = new LockRepository(curatorFramework);
         AuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository(graph, lockRepository);
-        OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationRepository);
+        OntologyRepository ontologyRepository = new SecureGraphOntologyRepository(graph, authorizationRepository);
 
         verifyWikipediaPageConceptId(ontologyRepository);
         verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(ontologyRepository);
@@ -170,7 +171,7 @@ public class ImportMR extends Configured implements Tool {
     }
 
     private String verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(OntologyRepository ontologyRepository) {
-        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
+        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipByVertexId(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
@@ -178,7 +179,7 @@ public class ImportMR extends Configured implements Tool {
     }
 
     private String verifyWikipediaPageConceptId(OntologyRepository ontologyRepository) {
-        Concept wikipediaPageConcept = ontologyRepository.getConceptById(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
+        Concept wikipediaPageConcept = ontologyRepository.getConceptByVertexId(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageConcept == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
