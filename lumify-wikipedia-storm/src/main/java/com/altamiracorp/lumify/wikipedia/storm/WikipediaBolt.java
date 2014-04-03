@@ -116,13 +116,13 @@ public class WikipediaBolt extends BaseLumifyBolt {
             revisionTimestampXPath = XPathFactory.instance().compile(REVISION_TIMESTAMP_XPATH, Filters.text());
 
             LOGGER.info("Getting ontology concepts");
-            Concept wikipediaPageConcept = ontologyRepository.getConceptById(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
+            Concept wikipediaPageConcept = ontologyRepository.getConceptByVertexId(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
             if (wikipediaPageConcept == null) {
                 throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
             }
             wikipediaPageConceptId = wikipediaPageConcept.getId();
 
-            wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
+            wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipByVertexId(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
             if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
                 throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
             }
