@@ -171,7 +171,7 @@ public class ImportMR extends Configured implements Tool {
     }
 
     private String verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(OntologyRepository ontologyRepository) {
-        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipByVertexId(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
+        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipByIRI(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
@@ -179,7 +179,7 @@ public class ImportMR extends Configured implements Tool {
     }
 
     private String verifyWikipediaPageConceptId(OntologyRepository ontologyRepository) {
-        Concept wikipediaPageConcept = ontologyRepository.getConceptByVertexId(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
+        Concept wikipediaPageConcept = ontologyRepository.getConceptByIRI(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageConcept == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
