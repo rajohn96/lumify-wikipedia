@@ -85,7 +85,7 @@ public class ImportMR extends Configured implements Tool {
         AuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository(graph, lockRepository);
         OntologyRepository ontologyRepository = new SecureGraphOntologyRepository(graph, authorizationRepository);
 
-        verifyWikipediaPageConceptId(ontologyRepository);
+        verifyWikipediaPageConcept(ontologyRepository);
         verifyWikipediaPageInternalLinkWikipediaPageRelationship(ontologyRepository);
 
         conf.set(ImportMRReducer.MAX_ITEMS_PER_REQUEST, Integer.toString(ImportMRReducer.DEFAULT_MAX_ITEMS_PER_REQUEST));
@@ -177,12 +177,11 @@ public class ImportMR extends Configured implements Tool {
         }
     }
 
-    private String verifyWikipediaPageConceptId(OntologyRepository ontologyRepository) {
+    private void verifyWikipediaPageConcept(OntologyRepository ontologyRepository) {
         Concept wikipediaPageConcept = ontologyRepository.getConceptByIRI(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageConcept == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
-        return wikipediaPageConcept.getId();
     }
 
     private Configuration getConfiguration(String[] args, com.altamiracorp.lumify.core.config.Configuration lumifyConfig) {
