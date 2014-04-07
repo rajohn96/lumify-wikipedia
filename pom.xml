@@ -21,7 +21,6 @@
     </properties>
 
     <modules>
-        <module>lumify-wikipedia-storm</module>
         <module>lumify-wikipedia-core</module>
         <module>lumify-wikipedia-mr</module>
     </modules>

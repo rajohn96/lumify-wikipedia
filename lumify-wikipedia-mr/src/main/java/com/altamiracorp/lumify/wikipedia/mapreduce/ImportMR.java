@@ -4,6 +4,7 @@ import com.altamiracorp.lumify.core.model.lock.LockRepository;
 import com.altamiracorp.lumify.core.model.ontology.Concept;
 import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
 import com.altamiracorp.lumify.core.model.ontology.Relationship;
+import com.altamiracorp.lumify.core.model.ontology.SecureGraphOntologyRepository;
 import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
 import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
 import com.altamiracorp.lumify.core.model.user.AuthorizationRepository;
@@ -85,10 +86,10 @@ public class ImportMR extends Configured implements Tool {
         authorizationRepository.setGraph(graph);
         authorizationRepository.setLockRepository(lockRepository);
 
-        OntologyRepository ontologyRepository = new OntologyRepository(graph, authorizationRepository);
+        OntologyRepository ontologyRepository = new SecureGraphOntologyRepository(graph, authorizationRepository);
 
-        verifyWikipediaPageConceptId(ontologyRepository);
-        verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(ontologyRepository);
+        verifyWikipediaPageConcept(ontologyRepository);
+        verifyWikipediaPageInternalLinkWikipediaPageRelationship(ontologyRepository);
 
         conf.set(ImportMRReducer.MAX_ITEMS_PER_REQUEST, Integer.toString(ImportMRReducer.DEFAULT_MAX_ITEMS_PER_REQUEST));
 
@@ -172,20 +173,18 @@ public class ImportMR extends Configured implements Tool {
         return new Text(tableName + KEY_SPLIT + new String(Base64.encodeBase64(key)));
     }
 
-    private String verifyWikipediaPageInternalLinkWikipediaPageRelationshipId(OntologyRepository ontologyRepository) {
-        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipById(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
+    private void verifyWikipediaPageInternalLinkWikipediaPageRelationship(OntologyRepository ontologyRepository) {
+        Relationship wikipediaPageInternalLinkWikipediaPageRelationship = ontologyRepository.getRelationshipByIRI(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageInternalLinkWikipediaPageRelationship == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
-        return wikipediaPageInternalLinkWikipediaPageRelationship.getId();
     }
 
-    private String verifyWikipediaPageConceptId(OntologyRepository ontologyRepository) {
-        Concept wikipediaPageConcept = ontologyRepository.getConceptById(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
+    private void verifyWikipediaPageConcept(OntologyRepository ontologyRepository) {
+        Concept wikipediaPageConcept = ontologyRepository.getConceptByIRI(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI);
         if (wikipediaPageConcept == null) {
             throw new RuntimeException(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI + " concept not found");
         }
-        return wikipediaPageConcept.getId();
     }
 
     private Configuration getConfiguration(String[] args, com.altamiracorp.lumify.core.config.Configuration lumifyConfig) {
