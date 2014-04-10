@@ -86,7 +86,10 @@ public class ImportMR extends Configured implements Tool {
         authorizationRepository.setGraph(graph);
         authorizationRepository.setLockRepository(lockRepository);
 
-        OntologyRepository ontologyRepository = new SecureGraphOntologyRepository(graph, authorizationRepository);
+        SecureGraphOntologyRepository ontologyRepository = new SecureGraphOntologyRepository();
+        ontologyRepository.setGraph(graph);
+        ontologyRepository.setAuthorizationRepository(authorizationRepository);
+        ontologyRepository.init(new HashMap());
 
         verifyWikipediaPageConcept(ontologyRepository);
         verifyWikipediaPageInternalLinkWikipediaPageRelationship(ontologyRepository);
