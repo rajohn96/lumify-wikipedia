@@ -82,8 +82,14 @@ public class ImportMR extends Configured implements Tool {
         CuratorFramework curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
         curatorFramework.start();
         LockRepository lockRepository = new LockRepository(curatorFramework);
-        AuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository(graph, lockRepository);
-        OntologyRepository ontologyRepository = new SecureGraphOntologyRepository(graph, authorizationRepository);
+        AccumuloAuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository();
+        authorizationRepository.setGraph(graph);
+        authorizationRepository.setLockRepository(lockRepository);
+
+        SecureGraphOntologyRepository ontologyRepository = new SecureGraphOntologyRepository();
+        ontologyRepository.setGraph(graph);
+        ontologyRepository.setAuthorizationRepository(authorizationRepository);
+        ontologyRepository.init(new HashMap());
 
         verifyWikipediaPageConcept(ontologyRepository);
         verifyWikipediaPageInternalLinkWikipediaPageRelationship(ontologyRepository);

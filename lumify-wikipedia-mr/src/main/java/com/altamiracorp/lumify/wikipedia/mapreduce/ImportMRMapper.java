@@ -172,7 +172,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             SOURCE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_SOURCE, visibility);
             TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.TITLE_LOW_PRIORITY, linkTarget, visibility);
             Vertex linkedPageVertex = linkedPageVertexBuilder.save();
-            addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
+            Edge edge = addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
                     pageVertex,
                     linkedPageVertex,
                     WikipediaConstants.WIKIPEDIA_PAGE_INTERNAL_LINK_WIKIPEDIA_PAGE_CONCEPT_URI,
@@ -185,6 +185,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
                     .setConceptGraphVertexId(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility)
                     .setSign(linkTarget, visibility)
                     .setVertexId(linkedPageVertex.getId().toString(), visibility)
+                    .setEdgeId(edge.getId().toString(), visibility)
                     .setOntologyClassUri(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
             key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
             Mutation m = AccumuloSession.createMutationFromRow(termMention);
