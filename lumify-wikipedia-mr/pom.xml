@@ -46,45 +46,27 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptor>src/main/assembly/descriptor.xml</descriptor>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.altamiracorp.lumify.wikipedia.mapreduce.ImportMR</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <!-- Use this profile to build when deploying to a clustered environment. -->
-        <profile>
-            <id>cluster</id>
-            <properties>
-                <cluster.dependency.scope>provided</cluster.dependency.scope>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>uber-jar</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <configuration>
-                            <descriptor>src/main/assembly/descriptor.xml</descriptor>
-                            <archive>
-                                <manifest>
-                                    <mainClass>com.altamiracorp.lumify.wikipedia.mapreduce.ImportMR</mainClass>
-                                </manifest>
-                            </archive>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>make-assembly</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

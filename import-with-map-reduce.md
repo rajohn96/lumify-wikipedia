@@ -2,7 +2,7 @@
 
 1. Build the jar:
 
-        mvn clean package -P uber-jar
+        mvn clean package
 
 1. Convert the well-formed XML to one XML page element per line:
 
