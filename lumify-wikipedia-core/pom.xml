@@ -33,13 +33,11 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${storm.guava.version}</version>
-            <scope>${cluster.dependency.scope}</scope>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
             <version>${storm.log4j.version}</version>
-            <scope>${cluster.dependency.scope}</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -54,7 +52,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>${storm.slf4j.version}</version>
-            <scope>${cluster.dependency.scope}</scope>
         </dependency>
 
         <dependency>
