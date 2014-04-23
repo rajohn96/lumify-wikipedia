@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia.mapreduce;
+package io.lumify.wikipedia.mapreduce;
 
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.hadoop.io.Writable;

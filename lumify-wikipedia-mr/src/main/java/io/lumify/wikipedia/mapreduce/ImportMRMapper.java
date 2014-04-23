@@ -1,11 +1,11 @@
-package com.altamiracorp.lumify.wikipedia.mapreduce;
+package io.lumify.wikipedia.mapreduce;
 
 import com.altamiracorp.bigtable.model.accumulo.AccumuloSession;
-import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
-import com.altamiracorp.lumify.core.model.termMention.TermMentionRowKey;
-import com.altamiracorp.lumify.core.util.LumifyLogger;
-import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.lumify.wikipedia.*;
+import io.lumify.core.model.termMention.TermMentionModel;
+import io.lumify.core.model.termMention.TermMentionRowKey;
+import io.lumify.core.util.LumifyLogger;
+import io.lumify.core.util.LumifyLoggerFactory;
+import io.lumify.wikipedia.*;
 import com.altamiracorp.securegraph.*;
 import com.altamiracorp.securegraph.accumulo.AccumuloAuthorizations;
 import com.altamiracorp.securegraph.accumulo.AccumuloGraph;
@@ -37,10 +37,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 
-import static com.altamiracorp.lumify.core.model.ontology.OntologyLumifyProperties.CONCEPT_TYPE;
-import static com.altamiracorp.lumify.core.model.properties.EntityLumifyProperties.SOURCE;
-import static com.altamiracorp.lumify.core.model.properties.LumifyProperties.TITLE;
-import static com.altamiracorp.lumify.core.model.properties.RawLumifyProperties.*;
+import static io.lumify.core.model.ontology.OntologyLumifyProperties.CONCEPT_TYPE;
+import static io.lumify.core.model.properties.EntityLumifyProperties.SOURCE;
+import static io.lumify.core.model.properties.LumifyProperties.TITLE;
+import static io.lumify.core.model.properties.RawLumifyProperties.*;
 
 class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrElasticSearchIndexWritable> {
     private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(ImportMRMapper.class);

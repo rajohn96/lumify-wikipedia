@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia;
+package io.lumify.wikipedia;
 
 import java.io.IOException;
 import java.io.InputStream;

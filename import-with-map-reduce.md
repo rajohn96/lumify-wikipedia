@@ -7,7 +7,7 @@
 1. Convert the well-formed XML to one XML page element per line:
 
         java -cp umify-wikipedia-mr-*-jar-with-dependencies.jar \
-          com.altamiracorp.lumify.wikipedia.mapreduce.WikipediaFileToMRFile \
+          io.lumify.wikipedia.mapreduce.WikipediaFileToMRFile \
           -in enwiki-20140102-pages-articles.xml
           -out enwiki-20140102-pages-articles.MR.txt
 
@@ -34,6 +34,6 @@
 
 1. Import the wikipedia.owl
 
-1. Run `com.altamiracorp.lumify.wikipedia.mapreduce.ImportMR enwiki-20140102-pages-articles-lines-10.xml`
+1. Run `io.lumify.wikipedia.mapreduce.ImportMR enwiki-20140102-pages-articles-lines-10.xml`
 
 1. Run the public storm topology.

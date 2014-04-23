@@ -19,6 +19,6 @@ java \
 -Dfile.encoding=UTF-8 \
 -Djava.library.path=$LD_LIBRARY_PATH \
 -classpath ${classpath} \
-com.altamiracorp.lumify.wikipedia.StormRunner \
+io.lumify.wikipedia.StormRunner \
 --local \
 $*

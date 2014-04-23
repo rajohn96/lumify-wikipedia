@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>lumify-wikipedia</artifactId>
-        <groupId>com.altamiracorp.lumify</groupId>
+        <groupId>io.lumify</groupId>
         <version>0.2.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -14,27 +14,27 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.altamiracorp.lumify</groupId>
+            <groupId>io.lumify</groupId>
             <artifactId>lumify-wikipedia-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.altamiracorp.lumify</groupId>
+            <groupId>io.lumify</groupId>
             <artifactId>lumify-fs-hdfs</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.altamiracorp.lumify</groupId>
+            <groupId>io.lumify</groupId>
             <artifactId>lumify-model-bigtable-queue</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.altamiracorp.lumify</groupId>
+            <groupId>io.lumify</groupId>
             <artifactId>lumify-model-rabbitmq</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.altamiracorp.lumify</groupId>
+            <groupId>io.lumify</groupId>
             <artifactId>lumify-model-securegraph</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -73,7 +73,7 @@
                     <descriptor>src/main/assembly/descriptor.xml</descriptor>
                     <archive>
                         <manifest>
-                            <mainClass>com.altamiracorp.lumify.wikipedia.mapreduce.ImportMR</mainClass>
+                            <mainClass>io.lumify.wikipedia.mapreduce.ImportMR</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

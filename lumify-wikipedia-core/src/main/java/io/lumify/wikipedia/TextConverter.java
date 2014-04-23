@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia;
+package io.lumify.wikipedia;
 
 import de.fau.cs.osr.ptk.common.AstVisitor;
 import de.fau.cs.osr.ptk.common.ast.AstNode;

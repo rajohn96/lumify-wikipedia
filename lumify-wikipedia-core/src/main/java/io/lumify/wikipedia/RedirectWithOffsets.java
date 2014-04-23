@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia;
+package io.lumify.wikipedia;
 
 import org.sweble.wikitext.lazy.preprocessor.Redirect;
 

@@ -1,15 +1,15 @@
-package com.altamiracorp.lumify.wikipedia.mapreduce;
+package io.lumify.wikipedia.mapreduce;
 
-import com.altamiracorp.lumify.core.model.lock.LockRepository;
-import com.altamiracorp.lumify.core.model.ontology.Concept;
-import com.altamiracorp.lumify.core.model.ontology.OntologyRepository;
-import com.altamiracorp.lumify.core.model.ontology.Relationship;
-import com.altamiracorp.lumify.core.model.termMention.TermMentionModel;
-import com.altamiracorp.lumify.core.model.user.AccumuloAuthorizationRepository;
-import com.altamiracorp.lumify.core.util.LumifyLogger;
-import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.lumify.securegraph.model.ontology.SecureGraphOntologyRepository;
-import com.altamiracorp.lumify.wikipedia.WikipediaConstants;
+import io.lumify.core.model.lock.LockRepository;
+import io.lumify.core.model.ontology.Concept;
+import io.lumify.core.model.ontology.OntologyRepository;
+import io.lumify.core.model.ontology.Relationship;
+import io.lumify.core.model.termMention.TermMentionModel;
+import io.lumify.core.model.user.AccumuloAuthorizationRepository;
+import io.lumify.core.util.LumifyLogger;
+import io.lumify.core.util.LumifyLoggerFactory;
+import io.lumify.securegraph.model.ontology.SecureGraphOntologyRepository;
+import io.lumify.wikipedia.WikipediaConstants;
 import com.altamiracorp.securegraph.GraphFactory;
 import com.altamiracorp.securegraph.Vertex;
 import com.altamiracorp.securegraph.accumulo.AccumuloConstants;
@@ -70,14 +70,14 @@ public class ImportMR extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
-        com.altamiracorp.lumify.core.config.Configuration lumifyConfig = com.altamiracorp.lumify.core.config.Configuration.loadConfigurationFile();
+        io.lumify.core.config.Configuration lumifyConfig = io.lumify.core.config.Configuration.loadConfigurationFile();
         Configuration conf = getConfiguration(args, lumifyConfig);
         AccumuloGraphConfiguration accumuloGraphConfiguration = new AccumuloGraphConfiguration(conf, "graph.");
 
         Map configurationMap = toMap(conf);
         AccumuloGraph graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
         ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        String zookeeperConnectionString = conf.get(com.altamiracorp.lumify.core.config.Configuration.ZK_SERVERS);
+        String zookeeperConnectionString = conf.get(io.lumify.core.config.Configuration.ZK_SERVERS);
         CuratorFramework curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
         curatorFramework.start();
         LockRepository lockRepository = new LockRepository(curatorFramework);
@@ -186,7 +186,7 @@ public class ImportMR extends Configured implements Tool {
         }
     }
 
-    private Configuration getConfiguration(String[] args, com.altamiracorp.lumify.core.config.Configuration lumifyConfig) {
+    private Configuration getConfiguration(String[] args, io.lumify.core.config.Configuration lumifyConfig) {
         if (args.length != 1) {
             throw new RuntimeException("Required arguments <inputFileName>");
         }

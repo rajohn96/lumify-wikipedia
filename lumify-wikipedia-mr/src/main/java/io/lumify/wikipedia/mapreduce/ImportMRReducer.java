@@ -1,7 +1,7 @@
-package com.altamiracorp.lumify.wikipedia.mapreduce;
+package io.lumify.wikipedia.mapreduce;
 
-import com.altamiracorp.lumify.core.util.LumifyLogger;
-import com.altamiracorp.lumify.core.util.LumifyLoggerFactory;
+import io.lumify.core.util.LumifyLogger;
+import io.lumify.core.util.LumifyLoggerFactory;
 import com.altamiracorp.securegraph.GraphFactory;
 import com.altamiracorp.securegraph.accumulo.AccumuloGraph;
 import com.altamiracorp.securegraph.elasticsearch.ElasticSearchSearchIndex;

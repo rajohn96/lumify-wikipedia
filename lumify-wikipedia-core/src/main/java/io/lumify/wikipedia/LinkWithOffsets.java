@@ -1,4 +1,4 @@
-package com.altamiracorp.lumify.wikipedia;
+package io.lumify.wikipedia;
 
 public interface LinkWithOffsets {
     String getLinkTargetWithoutHash();
