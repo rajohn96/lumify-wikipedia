@@ -2,10 +2,10 @@ package io.lumify.wikipedia.mapreduce;
 
 import io.lumify.core.util.LumifyLogger;
 import io.lumify.core.util.LumifyLoggerFactory;
-import com.altamiracorp.securegraph.GraphFactory;
-import com.altamiracorp.securegraph.accumulo.AccumuloGraph;
-import com.altamiracorp.securegraph.elasticsearch.ElasticSearchSearchIndex;
-import com.altamiracorp.securegraph.util.MapUtils;
+import org.securegraph.GraphFactory;
+import org.securegraph.accumulo.AccumuloGraph;
+import org.securegraph.elasticsearch.ElasticSearchSearchIndex;
+import org.securegraph.util.MapUtils;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
