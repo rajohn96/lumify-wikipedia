@@ -6,6 +6,15 @@ import io.lumify.core.model.termMention.TermMentionRowKey;
 import io.lumify.core.util.LumifyLogger;
 import io.lumify.core.util.LumifyLoggerFactory;
 import io.lumify.wikipedia.*;
+import org.apache.accumulo.core.data.Mutation;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.jdom2.Document;
+import org.jdom2.JDOMException;
+import org.jdom2.filter.Filters;
+import org.jdom2.input.SAXBuilder;
+import org.jdom2.xpath.XPathExpression;
+import org.jdom2.xpath.XPathFactory;
 import org.securegraph.*;
 import org.securegraph.accumulo.AccumuloAuthorizations;
 import org.securegraph.accumulo.AccumuloGraph;
@@ -16,15 +25,6 @@ import org.securegraph.property.StreamingPropertyValue;
 import org.securegraph.util.ConvertingIterable;
 import org.securegraph.util.JoinIterable;
 import org.securegraph.util.MapUtils;
-import org.apache.accumulo.core.data.Mutation;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.jdom2.Document;
-import org.jdom2.JDOMException;
-import org.jdom2.filter.Filters;
-import org.jdom2.input.SAXBuilder;
-import org.jdom2.xpath.XPathExpression;
-import org.jdom2.xpath.XPathFactory;
 import org.sweble.wikitext.engine.CompiledPage;
 import org.sweble.wikitext.engine.Compiler;
 import org.sweble.wikitext.engine.PageId;
@@ -144,9 +144,9 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         VertexBuilder pageVertexBuilder = prepareVertex(wikipediaPageVertexId, visibility, authorizations);
         CONCEPT_TYPE.setProperty(pageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
         RAW.setProperty(pageVertexBuilder, rawPropertyValue, visibility);
-        TITLE.addPropertyValue(pageVertexBuilder, ImportMR.TITLE_HIGH_PRIORITY, pageTitle, visibility);
+        TITLE.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, pageTitle, visibility);
         MIME_TYPE.setProperty(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
-        SOURCE.setProperty(pageVertexBuilder, ImportMR.WIKIPEDIA_SOURCE, visibility);
+        SOURCE.addPropertyValue(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, ImportMR.WIKIPEDIA_SOURCE, visibility);
         if (revisionTimestamp != null) {
             PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
         }
@@ -169,8 +169,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility, authorizations);
             CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
             MIME_TYPE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
-            SOURCE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_SOURCE, visibility);
-            TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.TITLE_LOW_PRIORITY, linkTarget, visibility);
+            SOURCE.addPropertyValue(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, ImportMR.WIKIPEDIA_SOURCE, visibility);
             Vertex linkedPageVertex = linkedPageVertexBuilder.save();
             Edge edge = addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
                     pageVertex,
