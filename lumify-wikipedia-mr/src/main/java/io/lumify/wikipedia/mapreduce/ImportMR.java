@@ -51,7 +51,6 @@ public class ImportMR extends Configured implements Tool {
     public static final String WIKIPEDIA_ID_PREFIX = "WIKIPEDIA_";
     public static final String WIKIPEDIA_LINK_ID_PREFIX = "WIKIPEDIA_LINK_";
     public static final String MULTI_VALUE_KEY = ImportMR.class.getName();
-    public static final String MULTI_VALUE_KEY_LINKED = ImportMR.class.getName() + "#linked";
 
     static final char KEY_SPLIT = '\u001f';
     static final String TABLE_NAME_ELASTIC_SEARCH = "elasticSearch";

@@ -8,6 +8,7 @@ import io.lumify.core.util.LumifyLogger;
 import io.lumify.core.util.LumifyLoggerFactory;
 import io.lumify.wikipedia.*;
 import org.apache.accumulo.core.data.Mutation;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.jdom2.Document;
@@ -179,7 +180,8 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
 
             titleMetadata = new HashMap<String, Object>();
             LumifyProperties.CONFIDENCE.setMetadata(titleMetadata, 0.1);
-            TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.MULTI_VALUE_KEY_LINKED, linkTarget, titleMetadata, visibility);
+            String linkTargetHash = Base64.encodeBase64String(linkTarget.trim().toLowerCase().getBytes());
+            TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.MULTI_VALUE_KEY + "#" + linkTargetHash, linkTarget, titleMetadata, visibility);
 
             Vertex linkedPageVertex = linkedPageVertexBuilder.save();
             Edge edge = addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
