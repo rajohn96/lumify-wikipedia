@@ -153,7 +153,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         TITLE.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, pageTitle, titleMetadata, visibility);
 
         MIME_TYPE.setProperty(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
-        SOURCE.addPropertyValue(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, ImportMR.WIKIPEDIA_SOURCE, visibility);
+        SOURCE.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, ImportMR.WIKIPEDIA_SOURCE, visibility);
         if (revisionTimestamp != null) {
             PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
         }
