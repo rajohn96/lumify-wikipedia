@@ -144,7 +144,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
 
         StreamingPropertyValue textPropertyValue = new StreamingPropertyValue(new ByteArrayInputStream(wikitext.getBytes()), String.class);
 
-        VertexBuilder pageVertexBuilder = prepareVertex(wikipediaPageVertexId, visibility, authorizations);
+        VertexBuilder pageVertexBuilder = prepareVertex(wikipediaPageVertexId, visibility);
         CONCEPT_TYPE.setProperty(pageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
         RAW.setProperty(pageVertexBuilder, rawPropertyValue, visibility);
 
@@ -158,7 +158,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
         }
         TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
-        Vertex pageVertex = pageVertexBuilder.save();
+        Vertex pageVertex = pageVertexBuilder.save(authorizations);
 
         this.searchIndex.addPropertiesToIndex(pageVertex.getProperties());
 
@@ -166,14 +166,14 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         rawPropertyValue.getInputStream().reset();
         textPropertyValue.getInputStream().reset();
 
-        String elasticSearchJson = this.searchIndex.createJsonForElement(pageVertex);
+        String elasticSearchJson = this.searchIndex.createJsonForElement(pageVertex, authorizations);
         Text key = ImportMR.getKey(ImportMR.TABLE_NAME_ELASTIC_SEARCH, wikipediaPageVertexId.getBytes());
         context.write(key, new MutationOrElasticSearchIndexWritable(wikipediaPageVertexId, elasticSearchJson));
 
         for (LinkWithOffsets link : getLinks(textConverter)) {
             String linkTarget = link.getLinkTargetWithoutHash();
             String linkVertexId = ImportMR.getWikipediaPageVertexId(linkTarget);
-            VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility, authorizations);
+            VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility);
             CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
             MIME_TYPE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
             SOURCE.addPropertyValue(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, ImportMR.WIKIPEDIA_SOURCE, visibility);
@@ -183,7 +183,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
             String linkTargetHash = Base64.encodeBase64String(linkTarget.trim().toLowerCase().getBytes());
             TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.MULTI_VALUE_KEY + "#" + linkTargetHash, linkTarget, titleMetadata, visibility);
 
-            Vertex linkedPageVertex = linkedPageVertexBuilder.save();
+            Vertex linkedPageVertex = linkedPageVertexBuilder.save(authorizations);
             Edge edge = addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
                     pageVertex,
                     linkedPageVertex,
