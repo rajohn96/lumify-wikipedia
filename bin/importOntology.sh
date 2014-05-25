@@ -8,15 +8,19 @@ while [ -h "$SOURCE" ]; do
 done
 DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 
-classpath=$(${DIR}/classpath.sh lumify-wikipedia-core)
+classpath=$(${DIR}/classpath.sh lumify-wikipedia-mr)
 if [ $? -ne 0 ]; then
   echo "${classpath}"
   exit
 fi
+
+in=${DIR}/../data/ontology/wikipedia.owl
+iri=http://lumify.io/wikipedia
 
 java \
 -Dfile.encoding=UTF-8 \
 -classpath ${classpath} \
 -Xmx1024M \
 io.lumify.core.cmdline.OwlImport \
---in=${DIR}/../data/ontology/wikipedia.owl
+--in=${in} \
+--iri=${iri}
