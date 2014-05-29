@@ -45,7 +45,7 @@ import static io.lumify.core.model.properties.EntityLumifyProperties.SOURCE;
 import static io.lumify.core.model.properties.LumifyProperties.TITLE;
 import static io.lumify.core.model.properties.RawLumifyProperties.*;
 
-class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrElasticSearchIndexWritable> {
+class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(ImportMRMapper.class);
     public static final String TEXT_XPATH = "/page/revision/text/text()";
     public static final String TITLE_XPATH = "/page/title/text()";
@@ -60,7 +60,6 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
     private SimpleWikiConfiguration config;
     private org.sweble.wikitext.engine.Compiler compiler;
     private AccumuloGraph graph;
-    private ElasticSearchSearchIndex searchIndex;
 
     public ImportMRMapper() {
         this.textXPath = XPathFactory.instance().compile(TEXT_XPATH, Filters.text());
@@ -75,7 +74,6 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         this.graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
         this.visibility = new Visibility("");
         this.authorizations = new AccumuloAuthorizations();
-        this.searchIndex = (ElasticSearchSearchIndex) this.graph.getSearchIndex();
 
         try {
             config = new SimpleWikiConfiguration("classpath:/org/sweble/wikitext/engine/SimpleWikiConfiguration.xml");
@@ -160,16 +158,9 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
         TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
         Vertex pageVertex = pageVertexBuilder.save(authorizations);
 
-        this.searchIndex.addPropertiesToIndex(pageVertex.getProperties());
-
         // because save above will cause the StreamingPropertyValue to be read we need to reset the position to 0 for search indexing
         rawPropertyValue.getInputStream().reset();
         textPropertyValue.getInputStream().reset();
-
-        boolean mergeExisting = false;
-        String elasticSearchJson = this.searchIndex.createJsonForElement(graph, pageVertex, mergeExisting, authorizations);
-        Text key = ImportMR.getKey(ImportMR.TABLE_NAME_ELASTIC_SEARCH, wikipediaPageVertexId.getBytes());
-        context.write(key, new MutationOrElasticSearchIndexWritable(wikipediaPageVertexId, elasticSearchJson));
 
         for (LinkWithOffsets link : getLinks(textConverter)) {
             String linkTarget = link.getLinkTargetWithoutHash();
@@ -200,9 +191,9 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
                     .setVertexId(linkedPageVertex.getId().toString(), visibility)
                     .setEdgeId(edge.getId().toString(), visibility)
                     .setOntologyClassUri(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
-            key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
+            Text key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
             Mutation m = AccumuloSession.createMutationFromRow(termMention);
-            context.write(key, new MutationOrElasticSearchIndexWritable(m));
+            context.write(key, m);
         }
     }
 
@@ -232,16 +223,16 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, MutationOrE
 
     @Override
     protected void saveDataMutation(Context context, Text dataTableName, Mutation m) throws IOException, InterruptedException {
-        context.write(ImportMR.getKey(dataTableName.toString(), m.getRow()), new MutationOrElasticSearchIndexWritable(m));
+        context.write(ImportMR.getKey(dataTableName.toString(), m.getRow()), m);
     }
 
     @Override
     protected void saveEdgeMutation(Context context, Text edgesTableName, Mutation m) throws IOException, InterruptedException {
-        context.write(ImportMR.getKey(edgesTableName.toString(), m.getRow()), new MutationOrElasticSearchIndexWritable(m));
+        context.write(ImportMR.getKey(edgesTableName.toString(), m.getRow()), m);
     }
 
     @Override
     protected void saveVertexMutation(Context context, Text verticesTableName, Mutation m) throws IOException, InterruptedException {
-        context.write(ImportMR.getKey(verticesTableName.toString(), m.getRow()), new MutationOrElasticSearchIndexWritable(m));
+        context.write(ImportMR.getKey(verticesTableName.toString(), m.getRow()), m);
     }
 }

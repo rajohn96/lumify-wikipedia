@@ -1,5 +1,8 @@
 package io.lumify.wikipedia.mapreduce;
 
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.retry.ExponentialBackoffRetry;
 import io.lumify.core.model.lock.LockRepository;
 import io.lumify.core.model.ontology.Concept;
 import io.lumify.core.model.ontology.OntologyRepository;
@@ -10,22 +13,12 @@ import io.lumify.core.util.LumifyLogger;
 import io.lumify.core.util.LumifyLoggerFactory;
 import io.lumify.securegraph.model.ontology.SecureGraphOntologyRepository;
 import io.lumify.wikipedia.WikipediaConstants;
-import org.securegraph.GraphFactory;
-import org.securegraph.Vertex;
-import org.securegraph.accumulo.AccumuloConstants;
-import org.securegraph.accumulo.AccumuloGraph;
-import org.securegraph.accumulo.AccumuloGraphConfiguration;
-import org.securegraph.accumulo.mapreduce.AccumuloElementOutputFormat;
-import org.securegraph.accumulo.mapreduce.ElementMapper;
-import org.securegraph.util.MapUtils;
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.ExponentialBackoffRetry;
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.client.mapreduce.lib.partition.RangePartitioner;
 import org.apache.accumulo.core.client.security.tokens.AuthenticationToken;
+import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.util.TextUtil;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
@@ -38,6 +31,13 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.securegraph.GraphFactory;
+import org.securegraph.Vertex;
+import org.securegraph.accumulo.AccumuloGraph;
+import org.securegraph.accumulo.AccumuloGraphConfiguration;
+import org.securegraph.accumulo.mapreduce.AccumuloElementOutputFormat;
+import org.securegraph.accumulo.mapreduce.ElementMapper;
+import org.securegraph.util.MapUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -53,7 +53,6 @@ public class ImportMR extends Configured implements Tool {
     public static final String MULTI_VALUE_KEY = ImportMR.class.getName();
 
     static final char KEY_SPLIT = '\u001f';
-    static final String TABLE_NAME_ELASTIC_SEARCH = "elasticSearch";
 
     static String getWikipediaPageVertexId(String pageTitle) {
         return WIKIPEDIA_ID_PREFIX + pageTitle;
@@ -89,8 +88,6 @@ public class ImportMR extends Configured implements Tool {
         verifyWikipediaPageConcept(ontologyRepository);
         verifyWikipediaPageInternalLinkWikipediaPageRelationship(ontologyRepository);
 
-        conf.set(ImportMRReducer.MAX_ITEMS_PER_REQUEST, Integer.toString(ImportMRReducer.DEFAULT_MAX_ITEMS_PER_REQUEST));
-
         Job job = new Job(conf, "wikipediaImport");
 
         String instanceName = accumuloGraphConfiguration.getAccumuloInstanceName();
@@ -112,7 +109,7 @@ public class ImportMR extends Configured implements Tool {
 
         job.setJarByClass(ImportMR.class);
         job.setMapperClass(ImportMRMapper.class);
-        job.setMapOutputValueClass(MutationOrElasticSearchIndexWritable.class);
+        job.setMapOutputValueClass(Mutation.class);
         job.setReducerClass(ImportMRReducer.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(AccumuloElementOutputFormat.class);
@@ -137,32 +134,19 @@ public class ImportMR extends Configured implements Tool {
         splits.addAll(getSplits(graph, graph.getEdgesTableName()));
         splits.addAll(getSplits(graph, graph.getDataTableName()));
         splits.addAll(getSplits(graph, TermMentionModel.TABLE_NAME));
-        splits.addAll(getSplits(graph, TABLE_NAME_ELASTIC_SEARCH));
         Collections.sort(splits);
         return splits;
     }
 
     private Collection<Text> getSplits(AccumuloGraph graph, String tableName) throws TableNotFoundException, AccumuloSecurityException, AccumuloException {
-        boolean forEs = false;
-
-        if (TABLE_NAME_ELASTIC_SEARCH.equals(tableName)) {
-            forEs = true;
-            tableName = graph.getVerticesTableName();
-        }
-
         List<Text> tableNamePrefixedSplits = new ArrayList<Text>();
         Collection<Text> splits = graph.getConnector().tableOperations().listSplits(tableName, 100);
         if (splits.size() == 0) {
             return tableNamePrefixedSplits;
         }
         for (Text split : splits) {
-            if (forEs) {
-                Text splitName = getKey(TABLE_NAME_ELASTIC_SEARCH, split.toString().substring(AccumuloConstants.VERTEX_ROW_KEY_PREFIX.length()).getBytes());
-                tableNamePrefixedSplits.add(splitName);
-            } else {
-                Text splitName = getKey(tableName, TextUtil.getBytes(split));
-                tableNamePrefixedSplits.add(splitName);
-            }
+            Text splitName = getKey(tableName, TextUtil.getBytes(split));
+            tableNamePrefixedSplits.add(splitName);
         }
         return tableNamePrefixedSplits;
     }
