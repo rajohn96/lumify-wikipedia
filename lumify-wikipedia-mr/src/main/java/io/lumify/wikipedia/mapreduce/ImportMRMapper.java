@@ -21,7 +21,7 @@ import org.securegraph.*;
 import org.securegraph.accumulo.AccumuloAuthorizations;
 import org.securegraph.accumulo.AccumuloGraph;
 import org.securegraph.accumulo.mapreduce.ElementMapper;
-import org.securegraph.elasticsearch.ElasticSearchSearchIndex;
+import org.securegraph.accumulo.mapreduce.SecureGraphMRUtils;
 import org.securegraph.id.IdGenerator;
 import org.securegraph.property.StreamingPropertyValue;
 import org.securegraph.util.ConvertingIterable;
@@ -70,7 +70,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         super.setup(context);
-        Map configurationMap = ImportMR.toMap(context.getConfiguration());
+        Map configurationMap = SecureGraphMRUtils.toMap(context.getConfiguration());
         this.graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
         this.visibility = new Visibility("");
         this.authorizations = new AccumuloAuthorizations();
