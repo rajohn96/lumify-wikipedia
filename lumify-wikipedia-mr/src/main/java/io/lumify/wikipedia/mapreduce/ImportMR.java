@@ -37,6 +37,7 @@ import org.securegraph.accumulo.AccumuloGraph;
 import org.securegraph.accumulo.AccumuloGraphConfiguration;
 import org.securegraph.accumulo.mapreduce.AccumuloElementOutputFormat;
 import org.securegraph.accumulo.mapreduce.ElementMapper;
+import org.securegraph.accumulo.mapreduce.SecureGraphMRUtils;
 import org.securegraph.util.MapUtils;
 
 import java.io.BufferedOutputStream;
@@ -72,7 +73,7 @@ public class ImportMR extends Configured implements Tool {
         Configuration conf = getConfiguration(args, lumifyConfig);
         AccumuloGraphConfiguration accumuloGraphConfiguration = new AccumuloGraphConfiguration(conf, "graph.");
 
-        Map configurationMap = toMap(conf);
+        Map configurationMap = SecureGraphMRUtils.toMap(conf);
         AccumuloGraph graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
         ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
         String zookeeperConnectionString = conf.get(io.lumify.core.config.Configuration.ZK_SERVERS);
@@ -187,13 +188,5 @@ public class ImportMR extends Configured implements Tool {
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new ImportMR(), args);
         System.exit(res);
-    }
-
-    protected static Map toMap(Configuration configuration) {
-        Map map = new HashMap();
-        for (Map.Entry<String, String> entry : configuration) {
-            map.put(entry.getKey(), entry.getValue());
-        }
-        return map;
     }
 }
