@@ -41,6 +41,7 @@ import org.securegraph.accumulo.mapreduce.SecureGraphMRUtils;
 import org.securegraph.util.MapUtils;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
@@ -181,6 +182,7 @@ public class ImportMR extends Configured implements Tool {
         hadoopConfig.set(ElementMapper.GRAPH_CONFIG_PREFIX, "graph.");
         LOGGER.info("inFileName: %s", inFileName);
         hadoopConfig.set("in", inFileName);
+        hadoopConfig.set(ImportMRMapper.CONFIG_SOURCE_FILE_NAME, new File(inFileName).getName());
         this.setConf(hadoopConfig);
         return hadoopConfig;
     }

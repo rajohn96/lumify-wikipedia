@@ -57,6 +57,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     public static final String TITLE_XPATH = "/page/title/text()";
     public static final String REVISION_TIMESTAMP_XPATH = "/page/revision/timestamp/text()";
     public static final SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+    public static final String CONFIG_SOURCE_FILE_NAME = "sourceFileName";
 
     private XPathExpression<org.jdom2.Text> textXPath;
     private XPathExpression<org.jdom2.Text> titleXPath;
@@ -68,6 +69,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     private AccumuloGraph graph;
     private User user;
     private SecureGraphAuditRepository auditRepository;
+    private String sourceFileName;
 
     public ImportMRMapper() {
         this.textXPath = XPathFactory.instance().compile(TEXT_XPATH, Filters.text());
@@ -86,6 +88,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         VersionService versionService = new VersionService();
         Configuration configuration = new Configuration(configurationMap);
         this.auditRepository = new SecureGraphAuditRepository(null, versionService, configuration, null);
+        this.sourceFileName = context.getConfiguration().get(CONFIG_SOURCE_FILE_NAME);
 
         try {
             config = new SimpleWikiConfiguration("classpath:/org/sweble/wikitext/engine/SimpleWikiConfiguration.xml");
@@ -163,6 +166,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         LumifyProperties.TITLE.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, pageTitle, titleMetadata, visibility);
 
         RawLumifyProperties.MIME_TYPE.setProperty(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
+        RawLumifyProperties.FILE_NAME.setProperty(pageVertexBuilder, sourceFileName, visibility);
         EntityLumifyProperties.SOURCE.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, ImportMR.WIKIPEDIA_SOURCE, visibility);
         if (revisionTimestamp != null) {
             RawLumifyProperties.PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
@@ -191,6 +195,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
             LumifyProperties.CONFIDENCE.setMetadata(titleMetadata, 0.1);
             String linkTargetHash = Base64.encodeBase64String(linkTarget.trim().toLowerCase().getBytes());
             LumifyProperties.TITLE.addPropertyValue(linkedPageVertexBuilder, ImportMR.MULTI_VALUE_KEY + "#" + linkTargetHash, linkTarget, titleMetadata, visibility);
+            RawLumifyProperties.FILE_NAME.setProperty(pageVertexBuilder, sourceFileName, visibility);
 
             Vertex linkedPageVertex = linkedPageVertexBuilder.save(authorizations);
             Edge edge = addEdge(ImportMR.getWikipediaPageToPageEdgeId(pageVertex, linkedPageVertex),
