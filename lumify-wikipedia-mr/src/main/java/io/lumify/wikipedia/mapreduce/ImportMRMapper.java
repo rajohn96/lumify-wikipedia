@@ -168,7 +168,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
             VertexBuilder linkedPageVertexBuilder = prepareVertex(linkVertexId, visibility);
             CONCEPT_TYPE.setProperty(linkedPageVertexBuilder, WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
             MIME_TYPE.setProperty(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
-            SOURCE.addPropertyValue(linkedPageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, ImportMR.WIKIPEDIA_SOURCE, visibility);
+            SOURCE.addPropertyValue(linkedPageVertexBuilder, ImportMR.MULTI_VALUE_KEY, ImportMR.WIKIPEDIA_SOURCE, visibility);
 
             titleMetadata = new HashMap<String, Object>();
             LumifyProperties.CONFIDENCE.setMetadata(titleMetadata, 0.1);
