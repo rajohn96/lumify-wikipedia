@@ -72,6 +72,8 @@
         <lumify:glyphIconFileName>wikipediaPage.png</lumify:glyphIconFileName>
         <lumify:displayType xml:lang="en">document</lumify:displayType>
         <lumify:color>rgb(0, 0, 255)</lumify:color>
+        <lumify:subtitleFormula xml:lang="en">prop(&apos;http://lumify.io#source&apos;) || ''</lumify:subtitleFormula>
+        <lumify:timeFormula xml:lang="en">prop(&apos;http://lumify.io#publishedDate&apos;) || ''</lumify:timeFormula>
     </owl:Class>
 </rdf:RDF>
 
