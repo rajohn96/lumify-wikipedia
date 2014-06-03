@@ -57,7 +57,7 @@ public class ImportMR extends Configured implements Tool {
     static final char KEY_SPLIT = '\u001f';
 
     static String getWikipediaPageVertexId(String pageTitle) {
-        return WIKIPEDIA_ID_PREFIX + pageTitle;
+        return WIKIPEDIA_ID_PREFIX + pageTitle.trim();
     }
 
     static String getWikipediaPageToPageEdgeId(Vertex pageVertex, Vertex linkedPageVertex) {
