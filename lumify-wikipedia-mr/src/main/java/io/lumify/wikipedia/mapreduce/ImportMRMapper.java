@@ -1,14 +1,22 @@
 package io.lumify.wikipedia.mapreduce;
 
+import com.altamiracorp.bigtable.model.FlushFlag;
 import com.altamiracorp.bigtable.model.accumulo.AccumuloSession;
+import io.lumify.core.config.Configuration;
+import io.lumify.core.model.audit.Audit;
+import io.lumify.core.model.audit.AuditAction;
 import io.lumify.core.model.ontology.OntologyLumifyProperties;
 import io.lumify.core.model.properties.EntityLumifyProperties;
 import io.lumify.core.model.properties.LumifyProperties;
 import io.lumify.core.model.properties.RawLumifyProperties;
 import io.lumify.core.model.termMention.TermMentionModel;
 import io.lumify.core.model.termMention.TermMentionRowKey;
+import io.lumify.core.user.SystemUser;
+import io.lumify.core.user.User;
 import io.lumify.core.util.LumifyLogger;
 import io.lumify.core.util.LumifyLoggerFactory;
+import io.lumify.core.version.VersionService;
+import io.lumify.securegraph.model.audit.SecureGraphAuditRepository;
 import io.lumify.wikipedia.*;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.commons.codec.binary.Base64;
@@ -58,6 +66,8 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     private SimpleWikiConfiguration config;
     private org.sweble.wikitext.engine.Compiler compiler;
     private AccumuloGraph graph;
+    private User user;
+    private SecureGraphAuditRepository auditRepository;
 
     public ImportMRMapper() {
         this.textXPath = XPathFactory.instance().compile(TEXT_XPATH, Filters.text());
@@ -72,6 +82,10 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         this.graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
         this.visibility = new Visibility("");
         this.authorizations = new AccumuloAuthorizations();
+        this.user = new SystemUser(null);
+        VersionService versionService = new VersionService();
+        Configuration configuration = new Configuration(configurationMap);
+        this.auditRepository = new SecureGraphAuditRepository(null, versionService, configuration, null);
 
         try {
             config = new SimpleWikiConfiguration("classpath:/org/sweble/wikitext/engine/SimpleWikiConfiguration.xml");
@@ -156,6 +170,11 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         RawLumifyProperties.TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
         Vertex pageVertex = pageVertexBuilder.save(authorizations);
 
+        // audit vertex
+        Text key = ImportMR.getKey(Audit.TABLE_NAME, pageVertex.getId().toString().getBytes());
+        Audit audit = auditRepository.createAudit(AuditAction.CREATE, pageVertex.getId(), "Wikipedia MR", "", user, FlushFlag.DEFAULT, visibility);
+        context.write(key, AccumuloSession.createMutationFromRow(audit));
+
         // because save above will cause the StreamingPropertyValue to be read we need to reset the position to 0 for search indexing
         rawPropertyValue.getInputStream().reset();
         textPropertyValue.getInputStream().reset();
@@ -189,9 +208,8 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
                     .setVertexId(linkedPageVertex.getId().toString(), visibility)
                     .setEdgeId(edge.getId().toString(), visibility)
                     .setOntologyClassUri(WikipediaConstants.WIKIPEDIA_PAGE_CONCEPT_URI, visibility);
-            Text key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
-            Mutation m = AccumuloSession.createMutationFromRow(termMention);
-            context.write(key, m);
+            key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
+            context.write(key, AccumuloSession.createMutationFromRow(termMention));
         }
     }
 
