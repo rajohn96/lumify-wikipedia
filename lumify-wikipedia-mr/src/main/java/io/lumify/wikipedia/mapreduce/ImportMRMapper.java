@@ -171,7 +171,9 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         if (revisionTimestamp != null) {
             RawLumifyProperties.PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
         }
-        RawLumifyProperties.TEXT.setProperty(pageVertexBuilder, textPropertyValue, visibility);
+        Map<String, Object> textMetadata = new HashMap<String, Object>();
+        textMetadata.put(RawLumifyProperties.META_DATA_TEXT_DESCRIPTION, "Text");
+        RawLumifyProperties.TEXT.setProperty(pageVertexBuilder, textPropertyValue, textMetadata, visibility);
         Vertex pageVertex = pageVertexBuilder.save(authorizations);
 
         // audit vertex
