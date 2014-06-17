@@ -26,7 +26,10 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.CounterGroup;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.util.Tool;
@@ -116,7 +119,15 @@ public class ImportMR extends Configured implements Tool {
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(AccumuloElementOutputFormat.class);
         FileInputFormat.addInputPath(job, new Path(conf.get("in")));
-        return job.waitForCompletion(true) ? 0 : 1;
+
+        int returnCode = job.waitForCompletion(true) ? 0 : 1;
+
+        CounterGroup groupCounters = job.getCounters().getGroup(WikipediaImportCounters.class.getName());
+        for (Counter counter : groupCounters) {
+            System.out.println(counter.getDisplayName() + ": " + counter.getValue());
+        }
+
+        return returnCode;
     }
 
     private Path writeSplitsFile(Configuration conf, List<Text> splits) throws IOException {

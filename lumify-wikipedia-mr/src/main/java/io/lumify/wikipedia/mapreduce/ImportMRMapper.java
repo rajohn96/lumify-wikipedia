@@ -132,6 +132,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
             }
         } catch (JDOMException e) {
             LOGGER.error("Could not parse XML: " + filePosition + ":\n" + pageString, e);
+            context.getCounter(WikipediaImportCounters.XML_PARSE_ERRORS).increment(1);
             return;
         }
 
@@ -150,6 +151,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
             }
         } catch (Exception ex) {
             LOGGER.error("Could not process wikipedia text: " + filePosition + ":\n" + wikitext, ex);
+            context.getCounter(WikipediaImportCounters.WIKI_TEXT_PARSE_ERRORS).increment(1);
             return;
         }
 
@@ -220,6 +222,8 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
             key = ImportMR.getKey(TermMentionModel.TABLE_NAME, termMention.getRowKey().toString().getBytes());
             context.write(key, AccumuloSession.createMutationFromRow(termMention));
         }
+
+        context.getCounter(WikipediaImportCounters.PAGES_PROCESSED).increment(1);
     }
 
     private Iterable<LinkWithOffsets> getLinks(TextConverter textConverter) {
