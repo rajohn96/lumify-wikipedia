@@ -115,6 +115,10 @@ public class TextConverter extends AstVisitor<WtNode> {
         iterate(tableCell);
     }
 
+    public void visit(WtTableCaption tableCell) {
+        iterate(tableCell);
+    }
+
     public void visit(WtXmlAttribute xmlAttribute) {
         // do nothing
     }
