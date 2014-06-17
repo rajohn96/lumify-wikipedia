@@ -38,6 +38,11 @@
             <artifactId>lumify-model-securegraph</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.sweble.wikitext</groupId>
+            <artifactId>swc-engine</artifactId>
+            <version>${sweble.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -1,30 +1,27 @@
 package io.lumify.wikipedia;
 
 import de.fau.cs.osr.ptk.common.AstVisitor;
-import de.fau.cs.osr.ptk.common.ast.AstNode;
-import de.fau.cs.osr.ptk.common.ast.NodeList;
-import de.fau.cs.osr.ptk.common.ast.Text;
 import de.fau.cs.osr.utils.StringUtils;
-import org.sweble.wikitext.engine.Page;
+import io.lumify.core.util.LumifyLogger;
+import io.lumify.core.util.LumifyLoggerFactory;
 import org.sweble.wikitext.engine.PageTitle;
-import org.sweble.wikitext.engine.utils.EntityReferences;
-import org.sweble.wikitext.engine.utils.SimpleWikiConfiguration;
-import org.sweble.wikitext.lazy.LinkTargetException;
-import org.sweble.wikitext.lazy.encval.IllegalCodePoint;
-import org.sweble.wikitext.lazy.parser.*;
-import org.sweble.wikitext.lazy.preprocessor.*;
-import org.sweble.wikitext.lazy.utils.XmlCharRef;
-import org.sweble.wikitext.lazy.utils.XmlEntityRef;
+import org.sweble.wikitext.engine.config.WikiConfig;
+import org.sweble.wikitext.engine.nodes.EngPage;
+import org.sweble.wikitext.parser.nodes.*;
+import org.sweble.wikitext.parser.parser.LinkTargetException;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class TextConverter extends AstVisitor {
+public class TextConverter extends AstVisitor<WtNode> {
+    private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(TextConverter.class);
     private static final Pattern ws = Pattern.compile("\\s+");
 
-    private final SimpleWikiConfiguration config;
+    private final WikiConfig config;
+
+    private final int wrapCol;
 
     private StringBuilder sb;
 
@@ -32,11 +29,16 @@ public class TextConverter extends AstVisitor {
 
     private int extLinkNum;
 
+    /**
+     * Becomes true if we are no long at the Beginning Of the whole Document.
+     */
     private boolean pastBod;
 
     private int needNewlines;
 
     private boolean needSpace;
+
+    private boolean noWrap;
 
     private LinkedList<Integer> sections;
     private List<InternalLinkWithOffsets> internalLinks = new ArrayList<InternalLinkWithOffsets>();
@@ -44,12 +46,13 @@ public class TextConverter extends AstVisitor {
 
     // =========================================================================
 
-    public TextConverter(SimpleWikiConfiguration config) {
+    public TextConverter(WikiConfig config) {
         this.config = config;
+        this.wrapCol = 100000;
     }
 
     @Override
-    protected boolean before(AstNode node) {
+    protected boolean before(WtNode node) {
         // This method is called by go() before visitation starts
         sb = new StringBuilder();
         line = new StringBuilder();
@@ -57,12 +60,13 @@ public class TextConverter extends AstVisitor {
         pastBod = false;
         needNewlines = 0;
         needSpace = false;
+        noWrap = true;
         sections = new LinkedList<Integer>();
         return super.before(node);
     }
 
     @Override
-    protected Object after(AstNode node, Object result) {
+    protected Object after(WtNode node, Object result) {
         finishLine();
 
         // This method is called by go() after visitation has finished
@@ -70,67 +74,104 @@ public class TextConverter extends AstVisitor {
         return sb.toString();
     }
 
-    public void visit(AstNode n) {
-        if (n instanceof Redirect) {
-            write("REDIRECT: ");
+    // =========================================================================
 
-            Redirect redirect = (Redirect) n;
-            int startOffset = getCurrentOffset();
-            String target = redirect.getTarget();
-            write(target);
-            int endOffset = getCurrentOffset();
-            redirects.add(new RedirectWithOffsets(redirect, startOffset, endOffset));
-        }
+    public void visit(WtNode n) {
+        // Fallback for all nodes that are not explicitly handled below
+        LOGGER.debug("fallback %s: %s", n.getClass().getName(), n.toString());
+        write("<");
+        write(n.getNodeName());
+        write(" />");
     }
 
-    public void visit(NodeList n) {
+    public void visit(WtXmlEndTag xmlEndTag) {
+        // do nothing
+    }
+
+    public void visit(WtTable table) {
+        write('\n');
+        iterate(table.getBody());
+        write('\n');
+    }
+
+    public void visit(WtTableImplicitTableBody body) {
+        iterate(body.getBody());
+    }
+
+    public void visit(WtBody body) {
+        iterate(body);
+    }
+
+    public void visit(WtTableRow tableRow) {
+        iterate(tableRow);
+        write('\n');
+    }
+
+    public void visit(WtTableHeader tableHeader) {
+        iterate(tableHeader);
+    }
+
+    public void visit(WtTableCell tableCell) {
+        iterate(tableCell);
+    }
+
+    public void visit(WtXmlAttribute xmlAttribute) {
+        // do nothing
+    }
+
+    public void visit(WtRedirect redirect) {
+        write("REDIRECT: ");
+
+        int startOffset = getCurrentOffset();
+        WtPageName target = redirect.getTarget();
+        write(target.getAsString());
+        int endOffset = getCurrentOffset();
+        redirects.add(new RedirectWithOffsets(redirect, startOffset, endOffset));
+    }
+
+    public void visit(WtNodeList n) {
         iterate(n);
     }
 
-    public void visit(Itemization e) {
-        iterate(e.getContent());
+    public void visit(WtUnorderedList e) {
+        iterate(e);
     }
 
-    public void visit(ItemizationItem i) {
+    public void visit(WtOrderedList e) {
+        iterate(e);
+    }
+
+    public void visit(WtListItem item) {
         newline(1);
-        iterate(i.getContent());
+        iterate(item);
     }
 
-    public void visit(Enumeration e) {
-        iterate(e.getContent());
+    public void visit(EngPage p) {
+        iterate(p);
     }
 
-    public void visit(EnumerationItem item) {
-        newline(1);
-        iterate(item.getContent());
-    }
-
-    public void visit(Page p) {
-        iterate(p.getContent());
-    }
-
-    public void visit(Text text) {
+    public void visit(WtText text) {
         write(text.getContent());
     }
 
-    public void visit(Whitespace w) {
+    public void visit(WtWhitespace w) {
         write(" ");
     }
 
-    public void visit(Bold b) {
-        iterate(b.getContent());
+    public void visit(WtBold b) {
+        iterate(b);
     }
 
-    public void visit(Italics i) {
-        iterate(i.getContent());
+    public void visit(WtItalics i) {
+        iterate(i);
     }
 
-    public void visit(XmlCharRef cr) {
+    public void visit(WtXmlCharRef cr) {
         write(Character.toChars(cr.getCodePoint()));
     }
 
-    public void visit(XmlEntityRef er) {
-        String ch = EntityReferences.resolve(er.getName());
+    public void visit(WtXmlEntityRef er) {
+        String ch = er.getResolved();
         if (ch == null) {
             write('&');
             write(er.getName());
@@ -140,31 +181,40 @@ public class TextConverter extends AstVisitor {
         }
     }
 
-    public void visit(Url url) {
-        write(url.getProtocol());
-        write(':');
-        write(url.getPath());
+    public void visit(WtUrl wtUrl) {
+        if (!wtUrl.getProtocol().isEmpty()) {
+            write(wtUrl.getProtocol());
+            write(':');
+        }
+        write(wtUrl.getPath());
     }
 
-    public void visit(ExternalLink link) {
+    public void visit(WtExternalLink link) {
         write('[');
         write(extLinkNum++);
-        write(']');
+        write("] ");
+        iterate(link.getTitle());
+        write(" (");
+        write(link.getTarget().getProtocol());
+        write(':');
+        write(link.getTarget().getPath());
+        write(')');
     }
 
-    public void visit(InternalLink link) {
+    public void visit(WtInternalLink link) {
         int startOffset = getCurrentOffset();
         try {
-            PageTitle page = PageTitle.make(config, link.getTarget());
-            if (page.getNamespace().equals(config.getNamespace("Category"))) {
-                return;
+            if (link.getTarget().isResolved()) {
+                PageTitle page = PageTitle.make(config, link.getTarget().getAsString());
+                if (page.getNamespace().equals(config.getNamespace("Category")))
+                    return;
             }
         } catch (LinkTargetException e) {
         }
 
         write(link.getPrefix());
-        if (link.getTitle().getContent() == null || link.getTitle().getContent().isEmpty()) {
-            write(link.getTarget());
+        if (!link.hasTitle()) {
+            iterate(link.getTarget());
         } else {
             iterate(link.getTitle());
         }
@@ -174,39 +224,37 @@ public class TextConverter extends AstVisitor {
         internalLinks.add(new InternalLinkWithOffsets(link, startOffset, endOffset));
     }
 
-    public void visit(Section s) {
+    public void visit(WtSection s) {
         finishLine();
         StringBuilder saveSb = sb;
+        boolean saveNoWrap = noWrap;
 
         sb = new StringBuilder();
+        noWrap = true;
 
-        iterate(s.getTitle());
+        iterate(s.getHeading());
         finishLine();
         String title = sb.toString().trim();
 
         sb = saveSb;
 
         if (s.getLevel() >= 1) {
-            while (sections.size() > s.getLevel()) {
+            while (sections.size() > s.getLevel())
                 sections.removeLast();
-            }
-            while (sections.size() < s.getLevel()) {
+            while (sections.size() < s.getLevel())
                 sections.add(1);
-            }
 
             StringBuilder sb2 = new StringBuilder();
             for (int i = 0; i < sections.size(); ++i) {
-                if (i < 1) {
+                if (i < 1)
                     continue;
-                }
 
                 sb2.append(sections.get(i));
                 sb2.append('.');
             }
 
-            if (sb2.length() > 0) {
+            if (sb2.length() > 0)
                 sb2.append(' ');
-            }
             sb2.append(title);
             title = sb2.toString();
         }
@@ -215,6 +263,8 @@ public class TextConverter extends AstVisitor {
         write(title);
         newline(2);
 
+        noWrap = saveNoWrap;
+
         iterate(s.getBody());
 
         while (sections.size() > s.getLevel())
@@ -222,16 +272,16 @@ public class TextConverter extends AstVisitor {
         sections.add(sections.removeLast() + 1);
     }
 
-    public void visit(Paragraph p) {
-        iterate(p.getContent());
+    public void visit(WtParagraph p) {
+        iterate(p);
         newline(2);
     }
 
-    public void visit(HorizontalRule hr) {
-        newline(1);
+    public void visit(WtHorizontalRule hr) {
+        newline(2);
     }
 
-    public void visit(XmlElement e) {
+    public void visit(WtXmlElement e) {
         if (e.getName().equalsIgnoreCase("br")) {
             newline(1);
         } else {
@@ -242,44 +292,42 @@ public class TextConverter extends AstVisitor {
     // =========================================================================
     // Stuff we want to hide
 
-    public void visit(ImageLink n) {
+    public void visit(WtImageLink n) {
     }
 
-    public void visit(IllegalCodePoint n) {
+    public void visit(WtIllegalCodePoint n) {
     }
 
-    public void visit(XmlComment n) {
+    public void visit(WtXmlComment n) {
     }
 
-    public void visit(Template n) {
+    public void visit(WtTemplate n) {
     }
 
-    public void visit(TemplateArgument n) {
+    public void visit(WtTemplateArgument n) {
     }
 
-    public void visit(TemplateParameter n) {
+    public void visit(WtTemplateParameter n) {
     }
 
-    public void visit(TagExtension n) {
+    public void visit(WtTagExtension n) {
     }
 
-    public void visit(MagicWord n) {
+    public void visit(WtPageSwitch n) {
     }
 
     // =========================================================================
 
     private void newline(int num) {
         if (pastBod) {
-            if (num > needNewlines) {
+            if (num > needNewlines)
                 needNewlines = num;
-            }
         }
     }
 
     private void wantSpace() {
-        if (pastBod) {
+        if (pastBod)
             needSpace = true;
-        }
     }
 
     private void finishLine() {
@@ -299,13 +347,19 @@ public class TextConverter extends AstVisitor {
         if (length == 0)
             return;
 
-        if (needSpace && needNewlines <= 0) {
-            line.append(' ');
+        if (!noWrap && needNewlines <= 0) {
+            if (needSpace)
+                length += 1;
+
+            if (line.length() + length >= wrapCol && line.length() > 0)
+                writeNewlines(1);
         }
 
-        if (needNewlines > 0) {
+        if (needSpace && needNewlines <= 0)
+            line.append(' ');
+
+        if (needNewlines > 0)
             writeNewlines(needNewlines);
-        }
 
         needSpace = false;
         pastBod = true;
@@ -316,21 +370,19 @@ public class TextConverter extends AstVisitor {
         if (s.isEmpty())
             return;
 
-        if (Character.isSpaceChar(s.charAt(0))) {
+        if (Character.isSpaceChar(s.charAt(0)))
             wantSpace();
-        }
 
-        String[] words = ws.split(s);
-        for (int i = 0; i < words.length; ) {
-            writeWord(words[i]);
-            if (++i < words.length) {
-                wantSpace();
-            }
-        }
+        line.append(s);
+//        String[] words = ws.split(s);
+//        for (int i = 0; i < words.length; ) {
+//            writeWord(words[i]);
+//            if (++i < words.length)
+//                wantSpace();
+//        }
 
-        if (Character.isSpaceChar(s.charAt(s.length() - 1))) {
+        if (Character.isSpaceChar(s.charAt(s.length() - 1)))
             wantSpace();
-        }
     }
 
     private void write(char[] cs) {

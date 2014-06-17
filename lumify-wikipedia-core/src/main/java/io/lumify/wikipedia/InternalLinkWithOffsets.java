@@ -1,19 +1,20 @@
 package io.lumify.wikipedia;
 
-import org.sweble.wikitext.lazy.parser.InternalLink;
+import org.sweble.wikitext.parser.nodes.WtInternalLink;
+import org.sweble.wikitext.parser.nodes.WtPageName;
 
 public class InternalLinkWithOffsets implements LinkWithOffsets {
-    private final InternalLink link;
+    private final WtInternalLink link;
     private final int startOffset;
     private final int endOffset;
 
-    public InternalLinkWithOffsets(InternalLink link, int startOffset, int endOffset) {
+    public InternalLinkWithOffsets(WtInternalLink link, int startOffset, int endOffset) {
         this.link = link;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
     }
 
-    public InternalLink getLink() {
+    public WtInternalLink getLink() {
         return link;
     }
 
@@ -26,16 +27,17 @@ public class InternalLinkWithOffsets implements LinkWithOffsets {
     }
 
     public String getLinkTargetWithoutHash() {
-        String target = getLink().getTarget();
+        WtPageName target = getLink().getTarget();
         if (target == null) {
             return null;
         }
+        String targetString = target.getAsString();
 
-        int hashIndex = target.indexOf('#');
+        int hashIndex = targetString.indexOf('#');
         if (hashIndex > 0) {
-            target = target.substring(0, hashIndex);
+            targetString = targetString.substring(0, hashIndex);
         }
 
-        return target;
+        return targetString;
     }
 }
