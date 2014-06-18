@@ -1,7 +1,7 @@
 package io.lumify.wikipedia.mapreduce;
 
-import com.altamiracorp.bigtable.model.FlushFlag;
 import com.altamiracorp.bigtable.model.accumulo.AccumuloSession;
+import com.google.inject.Inject;
 import io.lumify.core.config.Configuration;
 import io.lumify.core.model.audit.Audit;
 import io.lumify.core.model.audit.AuditAction;
@@ -11,6 +11,7 @@ import io.lumify.core.model.properties.LumifyProperties;
 import io.lumify.core.model.properties.RawLumifyProperties;
 import io.lumify.core.model.termMention.TermMentionModel;
 import io.lumify.core.model.termMention.TermMentionRowKey;
+import io.lumify.core.model.user.UserRepository;
 import io.lumify.core.user.SystemUser;
 import io.lumify.core.user.User;
 import io.lumify.core.util.LumifyLogger;
@@ -71,6 +72,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     private AccumuloGraph graph;
     private User user;
     private SecureGraphAuditRepository auditRepository;
+    private UserRepository userRepository;
     private String sourceFileName;
 
     public ImportMRMapper() {
@@ -89,7 +91,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         this.user = new SystemUser(null);
         VersionService versionService = new VersionService();
         Configuration configuration = new Configuration(configurationMap);
-        this.auditRepository = new SecureGraphAuditRepository(null, versionService, configuration, null);
+        this.auditRepository = new SecureGraphAuditRepository(null, versionService, configuration, null, userRepository);
         this.sourceFileName = context.getConfiguration().get(CONFIG_SOURCE_FILE_NAME);
 
         try {
@@ -182,7 +184,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
 
         // audit vertex
         Text key = ImportMR.getKey(Audit.TABLE_NAME, pageVertex.getId().toString().getBytes());
-        Audit audit = auditRepository.createAudit(AuditAction.CREATE, pageVertex.getId(), "Wikipedia MR", "", user, FlushFlag.DEFAULT, visibility);
+        Audit audit = auditRepository.createAudit(AuditAction.CREATE, pageVertex.getId(), "Wikipedia MR", "", user, visibility);
         context.write(key, AccumuloSession.createMutationFromRow(audit));
 
         // because save above will cause the StreamingPropertyValue to be read we need to reset the position to 0 for search indexing
@@ -271,5 +273,10 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     @Override
     protected void saveVertexMutation(Context context, Text verticesTableName, Mutation m) throws IOException, InterruptedException {
         context.write(ImportMR.getKey(verticesTableName.toString(), m.getRow()), m);
+    }
+
+    @Inject
+    public void setUserRepository (UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 }
