@@ -119,6 +119,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     private void safeMap(LongWritable filePosition, Text line, Context context) throws IOException, InterruptedException {
         String wikitext;
         String pageTitle;
+        String sourceUrl;
         Date revisionTimestamp = null;
         String pageString = line.toString().replaceAll("\\\\n", "\n");
         try {
@@ -126,6 +127,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
             Document doc = builder.build(new ByteArrayInputStream(pageString.getBytes()));
             pageTitle = textToString(titleXPath.evaluateFirst(doc));
             wikitext = textToString(textXPath.evaluate(doc));
+            sourceUrl = "http://en.wikipedia.org/wiki/" + pageTitle;
             String revisionTimestampString = textToString(revisionTimestampXPath.evaluateFirst(doc));
             try {
                 revisionTimestamp = ISO8601DATEFORMAT.parse(revisionTimestampString);
@@ -174,6 +176,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
         RawLumifyProperties.MIME_TYPE.setProperty(pageVertexBuilder, ImportMR.WIKIPEDIA_MIME_TYPE, visibility);
         RawLumifyProperties.FILE_NAME.setProperty(pageVertexBuilder, sourceFileName, visibility);
         EntityLumifyProperties.SOURCE.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, ImportMR.WIKIPEDIA_SOURCE, visibility);
+        EntityLumifyProperties.SOURCE_URL.addPropertyValue(pageVertexBuilder, ImportMR.MULTI_VALUE_KEY, sourceUrl, visibility);
         if (revisionTimestamp != null) {
             RawLumifyProperties.PUBLISHED_DATE.setProperty(pageVertexBuilder, revisionTimestamp, visibility);
         }
@@ -276,7 +279,7 @@ class ImportMRMapper extends ElementMapper<LongWritable, Text, Text, Mutation> {
     }
 
     @Inject
-    public void setUserRepository (UserRepository userRepository) {
+    public void setUserRepository(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 }

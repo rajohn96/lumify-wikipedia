@@ -1,17 +1,14 @@
 package io.lumify.wikipedia.mapreduce;
 
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.ExponentialBackoffRetry;
-import io.lumify.core.model.lock.LockRepository;
+import com.google.inject.Inject;
+import io.lumify.core.bootstrap.InjectHelper;
+import io.lumify.core.bootstrap.LumifyBootstrap;
 import io.lumify.core.model.ontology.Concept;
 import io.lumify.core.model.ontology.OntologyRepository;
 import io.lumify.core.model.ontology.Relationship;
 import io.lumify.core.model.termMention.TermMentionModel;
-import io.lumify.core.model.user.AccumuloAuthorizationRepository;
 import io.lumify.core.util.LumifyLogger;
 import io.lumify.core.util.LumifyLoggerFactory;
-import io.lumify.securegraph.model.ontology.SecureGraphOntologyRepository;
 import io.lumify.wikipedia.WikipediaConstants;
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
@@ -29,25 +26,25 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.CounterGroup;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.securegraph.GraphFactory;
+import org.securegraph.Graph;
 import org.securegraph.Vertex;
 import org.securegraph.accumulo.AccumuloGraph;
 import org.securegraph.accumulo.AccumuloGraphConfiguration;
 import org.securegraph.accumulo.mapreduce.AccumuloElementOutputFormat;
 import org.securegraph.accumulo.mapreduce.ElementMapper;
-import org.securegraph.accumulo.mapreduce.SecureGraphMRUtils;
-import org.securegraph.util.MapUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class ImportMR extends Configured implements Tool {
     private static final LumifyLogger LOGGER = LumifyLoggerFactory.getLogger(ImportMR.class);
@@ -58,6 +55,8 @@ public class ImportMR extends Configured implements Tool {
     public static final String MULTI_VALUE_KEY = ImportMR.class.getName();
 
     static final char KEY_SPLIT = '\u001f';
+    private OntologyRepository ontologyRepository;
+    private Graph graph;
 
     static String getWikipediaPageVertexId(String pageTitle) {
         return WIKIPEDIA_ID_PREFIX + pageTitle.trim();
@@ -76,19 +75,7 @@ public class ImportMR extends Configured implements Tool {
         io.lumify.core.config.Configuration lumifyConfig = io.lumify.core.config.Configuration.loadConfigurationFile();
         Configuration conf = getConfiguration(args, lumifyConfig);
         AccumuloGraphConfiguration accumuloGraphConfiguration = new AccumuloGraphConfiguration(conf, "graph.");
-
-        Map configurationMap = SecureGraphMRUtils.toMap(conf);
-        AccumuloGraph graph = (AccumuloGraph) new GraphFactory().createGraph(MapUtils.getAllWithPrefix(configurationMap, "graph"));
-        ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        String zookeeperConnectionString = conf.get(io.lumify.core.config.Configuration.ZK_SERVERS);
-        CuratorFramework curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
-        curatorFramework.start();
-        LockRepository lockRepository = new LockRepository(curatorFramework);
-        AccumuloAuthorizationRepository authorizationRepository = new AccumuloAuthorizationRepository();
-        authorizationRepository.setGraph(graph);
-        authorizationRepository.setLockRepository(lockRepository);
-
-        SecureGraphOntologyRepository ontologyRepository = new SecureGraphOntologyRepository(graph, authorizationRepository);
+        InjectHelper.inject(this, LumifyBootstrap.bootstrapModuleMaker(lumifyConfig));
 
         verifyWikipediaPageConcept(ontologyRepository);
         verifyWikipediaPageInternalLinkWikipediaPageRelationship(ontologyRepository);
@@ -101,7 +88,7 @@ public class ImportMR extends Configured implements Tool {
         AuthenticationToken authorizationToken = accumuloGraphConfiguration.getAuthenticationToken();
         AccumuloElementOutputFormat.setOutputInfo(job, instanceName, zooKeepers, principal, authorizationToken);
 
-        List<Text> splits = getSplits(graph);
+        List<Text> splits = getSplits((AccumuloGraph) graph);
         Path splitFile = writeSplitsFile(conf, splits);
 
         if (job.getConfiguration().get("mapred.job.tracker").equals("local")) {
@@ -201,5 +188,15 @@ public class ImportMR extends Configured implements Tool {
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new ImportMR(), args);
         System.exit(res);
+    }
+
+    @Inject
+    public void setOntologyRepository(OntologyRepository ontologyRepository) {
+        this.ontologyRepository = ontologyRepository;
+    }
+
+    @Inject
+    public void setGraph(Graph graph) {
+        this.graph = graph;
     }
 }
